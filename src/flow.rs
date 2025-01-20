@@ -1,11 +1,14 @@
+use std::cell::RefCell;
+
 use crate::intermediate_representation::StackVarType;
 
 #[derive(Debug, Clone)]
 pub enum FlowListener{
     Console,
+    Asserter(RefCell<Vec<StackVarType>>)
 }
 impl FlowListener {
-    pub fn get(&self,val: StackVarType) {
+    pub fn get(&self,val: StackVarType) -> bool {
         match self {
             FlowListener::Console => {
                 match val {
@@ -13,6 +16,14 @@ impl FlowListener {
                     StackVarType::Bool(val) => println!("{}",val),
                     StackVarType::Tuple(vec) => println!("{:?}",vec),
                     StackVarType::Procedure(_) => println!("Procedure"),                 
+                }
+                true
+            }
+            FlowListener::Asserter(expected_values) => {
+                if expected_values.borrow_mut().remove(0) == val {
+                    true
+                } else {
+                    false
                 }
             }
         }
