@@ -142,30 +142,30 @@ pub fn assembly(code: Vec<IR>) -> String {
     todo!()
 }
 #[allow(dead_code, unused_variables)]
-pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
+pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowListener>) {
     match ast_node.get_ast() {
         ExpressionType::Block(vec, block_type) => match block_type {
             BlockType::Evaluate => {
                 let mut ir_block: Vec<IR> = Vec::new();
                 for node in vec {
-                    ast_to_ir(node, &mut ir_block);
+                    ast_to_ir(node, &mut ir_block,listener);
                 }
                 ir.push(IR::Efine(ir_block));
             }
             BlockType::Draft => {
                 let mut ir_block: Vec<IR> = Vec::new();
                 for node in vec {
-                    ast_to_ir(node, &mut ir_block);
+                    ast_to_ir(node, &mut ir_block,listener);
                 }
                 ir.push(IR::Code(ir_block));
             }
         },
         ExpressionType::Define { value, like } => {
-            ast_to_ir(value, ir);
+            ast_to_ir(value, ir, listener);
             ir.push(IR::Store(like.get_string()));
         }
         ExpressionType::Assign(module_path, statement) => {
-            ast_to_ir(statement, ir);
+            ast_to_ir(statement, ir, listener);
             ir.push(IR::Store(module_path.get_string()));
         }
         ExpressionType::Nil => ir.push(IR::Nil),
@@ -175,8 +175,8 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
         ExpressionType::Bool(v) => ir.push(IR::Bool(v)),
         ExpressionType::Number(v) => ir.push(IR::Num(v)),
         ExpressionType::Comparsion(comparsion_type, statement, statement1) => {
-            ast_to_ir(statement, ir);
-            ast_to_ir(statement1, ir);
+            ast_to_ir(statement, ir, listener);
+            ast_to_ir(statement1, ir, listener);
             ir.push(match comparsion_type {
                 crate::types::ComparsionType::Equal => IR::Eql,
                 crate::types::ComparsionType::NotEqual => IR::NEql,
@@ -187,9 +187,9 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
             });
         }
         ExpressionType::OperationBool(action_type, statement, statement1) => {
-            ast_to_ir(statement, ir);
+            ast_to_ir(statement, ir, listener);
             if let Some(statement1) = statement1 {
-                ast_to_ir(statement1, ir);
+                ast_to_ir(statement1, ir, listener);
             }
             ir.push(match action_type {
                 crate::types::ActionType::Not => IR::Not,
@@ -199,8 +199,8 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
             });
         }
         ExpressionType::OperationNumder(action_type, statement, statement1) => {
-            ast_to_ir(statement, ir);
-            ast_to_ir(statement1, ir);
+            ast_to_ir(statement, ir, listener);
+            ast_to_ir(statement1, ir, listener);
             ir.push(match action_type {
                 crate::types::ActionType::Plus => IR::Add,
                 crate::types::ActionType::Minus => IR::Sub,
@@ -210,18 +210,18 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
             });
         }
         ExpressionType::If(statement, statement1, statement2) => {
-            ast_to_ir(statement, ir);
+            ast_to_ir(statement, ir, listener);
             ir.push(IR::Case(
                 vec![MatchPattern::Val(vec![IR::Bool(true)])],
                 ir.len() + 2,
             ));
-            ast_to_ir(statement1, ir);
+            ast_to_ir(statement1, ir, listener);
             if let Some(statement2) = statement2 {
-                ast_to_ir(statement2, ir);
+                ast_to_ir(statement2, ir, listener);
             }
         }
         ExpressionType::OutExpr { expr, like: _ } => {
-            ast_to_ir(expr, ir);
+            ast_to_ir(expr, ir, listener);
             ir.push(IR::Output(RefCell::new(FlowListener::Console)));
         }
         ExpressionType::In(v) => ir.push(IR::Input(RefCell::new(FlowStreamer::Console))),
@@ -363,7 +363,8 @@ pub fn execute(
                 stack.push(ref_cell.borrow().send());
             }
             IR::Output(ref_cell) => {
-                ref_cell.borrow().get(stack.pop().unwrap());
+                let ok_run = ref_cell.borrow().get(stack.pop().unwrap());
+                assert!(ok_run);
             }
         }
         index += 1;

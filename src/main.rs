@@ -1,13 +1,12 @@
-mod environment;
 mod parser;
 mod inout;
-mod old_runtime;
 mod lexer;
 mod types;
 mod flow;
 mod intermediate_representation;
 mod tests;
 use parser::parse_program;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::stdin;
 use std::rc::Rc;
@@ -55,7 +54,7 @@ fn main() {
     if ask_to_do_smth("convert to ir")
     {
         let mut ir = vec![]; 
-        intermediate_representation::ast_to_ir(tree.clone().into(),&mut ir);
+        intermediate_representation::ast_to_ir(tree.clone().into(),&mut ir, &RefCell::new(flow::FlowListener::Console));
         if ask_to_do_smth("print ir"){println!("{:#?}",&ir);}
         if ask_to_do_smth("run ir")
         {
