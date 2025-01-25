@@ -1,4 +1,4 @@
-use std::{borrow::Borrow,rc::Rc,};
+use std::rc::Rc;
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Statement
@@ -24,12 +24,12 @@ impl From<Statement> for Rc<ExpressionType> {
     }
     
 }
-pub type Path = Option<Box<ModulePath>>;
+pub type Path = Option<String>;
 
 #[derive(Debug, Clone,PartialEq)]
 #[allow(dead_code)]
 pub enum ToInvoke {
-    Named(Box<ModulePath>),
+    Named(String),
     Unnamed { code: Statement },
 }
 impl ToInvoke {
@@ -42,44 +42,14 @@ impl ToInvoke {
         }
     }
 }
-#[derive(Debug, Clone,PartialEq)]
-#[allow(dead_code)]
-pub struct ModulePath {
-    pub value: String,
-    pub child: Option<Box<ModulePath>>,
-}
-impl ModulePath {
-    pub fn new(value: String, child: Option<Box<ModulePath>>) -> Self {
-        Self { value, child }
-    }
-    pub fn get_string(&self) -> String {
-        match &self.child {
-            Some(child) => {
-                let bind: &ModulePath = child.borrow();
-                format!("{}_{}", self.value, bind.get_string())
-            }
-            None => self.value.clone(),
-        }
-    }
-    
-}
-pub fn create_module_path(nodes: Vec<String>) -> Option<Box<ModulePath>> {
-    if nodes.len() == 0 {
-        return None;
-    }
-    Some(Box::new(ModulePath {
-        value: nodes[0].clone(),
-        child: create_module_path(nodes[1..].to_vec()),
-    }))
-}
 #[derive(Debug,Clone,PartialEq)]
 #[allow(dead_code)]
 pub enum ExpressionType {
     Block(Vec<Statement>,BlockType),
-    Define{value: Statement,like: Box<ModulePath>},
-    Assign(Box<ModulePath>, Statement),
+    Define{link: Statement,like: String},
+    Assign(String, Statement),
     Nil,
-    Name(Box<ModulePath>),
+    Name(String),
     Bool(bool),
     Number(isize),
     Comparsion(ComparsionType, Statement, Statement),
@@ -89,6 +59,7 @@ pub enum ExpressionType {
     OutExpr { expr: Statement, like: Path },
     In(String),
     Jump(bool),
+    Set,
 }
 #[derive(Debug,Clone,PartialEq)]
 pub enum ActionType {

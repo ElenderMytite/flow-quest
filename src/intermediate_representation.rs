@@ -1,5 +1,5 @@
 use crate::flow::{FlowListener, FlowStreamer};
-use crate::types::{BlockType, ExpressionType, Statement};
+use crate::types::{BlockType, ExpressionType, Statement, ActionType, ComparsionType};
 use core::cmp::{Eq, Ord, PartialEq, PartialOrd};
 use std::cell::RefCell;
 use std::ops::{Add, Div, Mul, Not, Sub};
@@ -141,7 +141,6 @@ pub enum IR {
 pub fn assembly(code: Vec<IR>) -> String {
     todo!()
 }
-#[allow(dead_code, unused_variables)]
 pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowListener>) {
     match ast_node.get_ast() {
         ExpressionType::Block(vec, block_type) => match block_type {
@@ -160,17 +159,18 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowLi
                 ir.push(IR::Code(ir_block));
             }
         },
-        ExpressionType::Define { value, like } => {
-            ast_to_ir(value, ir, listener);
-            ir.push(IR::Store(like.get_string()));
+        ExpressionType::Define { link, like } => {
+            ast_to_ir(link, ir, listener);
+            ir.push(IR::Store(like));
         }
         ExpressionType::Assign(module_path, statement) => {
             ast_to_ir(statement, ir, listener);
-            ir.push(IR::Store(module_path.get_string()));
+            ir.push(IR::Store(module_path));
         }
+        ExpressionType::Set => {}
         ExpressionType::Nil => ir.push(IR::Nil),
         ExpressionType::Name(s) => {
-            ir.push(IR::Load(s.get_string()));
+            ir.push(IR::Load(s));
         }
         ExpressionType::Bool(v) => ir.push(IR::Bool(v)),
         ExpressionType::Number(v) => ir.push(IR::Num(v)),
@@ -178,12 +178,12 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowLi
             ast_to_ir(statement, ir, listener);
             ast_to_ir(statement1, ir, listener);
             ir.push(match comparsion_type {
-                crate::types::ComparsionType::Equal => IR::Eql,
-                crate::types::ComparsionType::NotEqual => IR::NEql,
-                crate::types::ComparsionType::Less => IR::Ls,
-                crate::types::ComparsionType::Greater => IR::Gt,
-                crate::types::ComparsionType::LessOrEqual => IR::LsEql,
-                crate::types::ComparsionType::GreaterOrEqual => IR::GtEql,
+                ComparsionType::Equal => IR::Eql,
+                ComparsionType::NotEqual => IR::NEql,
+                ComparsionType::Less => IR::Ls,
+                ComparsionType::Greater => IR::Gt,
+                ComparsionType::LessOrEqual => IR::LsEql,
+                ComparsionType::GreaterOrEqual => IR::GtEql,
             });
         }
         ExpressionType::OperationBool(action_type, statement, statement1) => {
@@ -192,9 +192,9 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowLi
                 ast_to_ir(statement1, ir, listener);
             }
             ir.push(match action_type {
-                crate::types::ActionType::Not => IR::Not,
-                crate::types::ActionType::And => IR::Add,
-                crate::types::ActionType::Or => IR::Mul,
+                ActionType::Not => IR::Not,
+                ActionType::And => IR::Add,
+                ActionType::Or => IR::Mul,
                 _ => todo!(),
             });
         }
@@ -202,10 +202,10 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowLi
             ast_to_ir(statement, ir, listener);
             ast_to_ir(statement1, ir, listener);
             ir.push(match action_type {
-                crate::types::ActionType::Plus => IR::Add,
-                crate::types::ActionType::Minus => IR::Sub,
-                crate::types::ActionType::Divide => IR::Div,
-                crate::types::ActionType::Multiply => IR::Mul,
+                ActionType::Plus => IR::Add,
+                ActionType::Minus => IR::Sub,
+                ActionType::Divide => IR::Div,
+                ActionType::Multiply => IR::Mul,
                 _ => todo!(),
             });
         }
@@ -224,7 +224,7 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowLi
             ast_to_ir(expr, ir, listener);
             ir.push(IR::Output(RefCell::new(FlowListener::Console)));
         }
-        ExpressionType::In(v) => ir.push(IR::Input(RefCell::new(FlowStreamer::Console))),
+        ExpressionType::In(_) => ir.push(IR::Input(RefCell::new(FlowStreamer::Console))),
         ExpressionType::Jump(t) => ir.push(IR::Jump(t)),
     }
 }
@@ -329,13 +329,12 @@ pub fn execute(
                         "Pattern length is longer than stack length or goto index is out of range"
                     );
                 }
-                let mut stack_index: isize = stack.len() as isize - 1;
                 let mut matched = true;
                 for pat in pattern {
 
                     match pat {
                         MatchPattern::Var(name) => {
-                            heap.insert(name.clone(), stack.get(stack_index as usize).unwrap().clone());
+                            heap.insert(name.clone(), stack.last().unwrap().clone());
                         }
                         MatchPattern::Val(val) => {
                             if stack.pop().unwrap()
@@ -349,7 +348,6 @@ pub fn execute(
                             stack.pop();
                         }
                     }
-                    stack_index -= 1;
                 }
                 if !matched {
                     index = *gt;

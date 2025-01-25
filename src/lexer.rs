@@ -160,7 +160,7 @@ fn tokenize_name(chars: &mut Vec<char>, first: char) -> Token {
     let mut name: String = String::from(first);
     loop {
         if chars.len() > 0 {
-            if !chars[0].is_alphanumeric() {
+            if !chars[0].is_alphanumeric() || chars[0] == '_' {
                 break;
             }
         } else {

@@ -1,7 +1,5 @@
 use crate::lexer::KeyWord;
 use crate::lexer::Token;
-use crate::types::create_module_path;
-use crate::types::ModulePath;
 use crate::types::Statement;
 use crate::types::{ActionType, BlockType, ExpressionType};
 use core::panic;
@@ -21,51 +19,6 @@ fn get_data_from_chain(tokens: &mut Vec<Token>) -> Rc<ExpressionType>
     }
     else {
         panic!("expected -- while getting data from chain; found: {:?}", tokens[0])
-    }
-}
-fn get_module_name(tokens: &mut Vec<Token>, first: String) -> Box<ModulePath> {
-    let mut is_running = true;
-    if first.as_str() != "" {
-        if let Token::From = tokens[0] {
-            shift(tokens);
-        } else {
-            is_running = false
-        }
-    }
-    let mut names: Vec<String> = vec![first];
-    if names[0] == "" {
-        names.pop();
-    }
-    while (tokens.len() > 0) & is_running {
-        match shift(tokens) {
-            Token::Name(name) => {
-                names.push(name);
-                if let Token::From = tokens[0] {
-                    shift(tokens);
-                } else {
-                    is_running = false
-                }
-            }
-            Token::Sign(id) => match id {
-                3 => {
-                    names.push(String::from("-all"));
-                    if let Token::From = tokens[0] {
-                        shift(tokens);
-                    } else {
-                        is_running = false
-                    }
-                }
-                _ => panic!("unexpected token: {:?}; expected name or *", tokens[0]),
-            },
-            v => panic!("unexpected token: {:?}; expected name or *", v),
-        }
-    }
-    {
-        let omp = create_module_path(names);
-        match omp {
-            None => panic!("found none modulepath"),
-            Some(mp) => mp,
-        }
     }
 }
 pub fn parse_program(tokens: &mut Vec<Token>) -> Rc<ExpressionType> {
@@ -140,21 +93,21 @@ fn parse_statement(tokens: &mut Vec<Token>) -> Rc<ExpressionType> {
             }
             4 => {
                 shift(tokens);
-                let value = parse_expression(tokens, 1).into();
+                let link = parse_expression(tokens, 1).into();
                 Rc::new(ExpressionType::Define {
-                    value,
+                    link,
                     like: 
                     match get_data_from_chain(tokens).as_ref() {
                         ExpressionType::Name(path) => {
                             path.clone()
                         }
-                        _ => panic!("expected name in defining; ", ),
+                        _ => panic!("expected name in defining;"),
                     }
                 })
             }
             5 => {
                 shift(tokens);
-                let name = get_module_name(tokens, String::from(""));
+                let name = shift(tokens).get_string_from_name();
                 let value = get_data_from_chain(tokens);
                 Rc::new(ExpressionType::Assign(name, value.into()))
             }
@@ -198,7 +151,7 @@ fn parse_keyword_statement(tokens: &mut Vec<Token>, keyword: KeyWord) -> Rc<Expr
             let to_out: Rc<ExpressionType> = parse_statement(tokens);
             if let Token::Mark(14) = tokens[0] {
                 shift(tokens);
-                let path = get_module_name(tokens, String::from(""));
+                let path = shift(tokens).get_string_from_name();
                 return Rc::new(ExpressionType::OutExpr {
                     expr: to_out.into(),
                     like: Some(path),
@@ -320,8 +273,7 @@ fn parse_primary(tokens: &mut Vec<Token>) -> Rc<ExpressionType> {
             let num = tk.get_int_value();
             Rc::new(ExpressionType::Number(num))
         }
-        Token::Name(first) => {
-            let name = get_module_name(tokens, first);
+        Token::Name(name) => {
             Rc::new(ExpressionType::Name(name))
         }
         Token::Mark(id) => match id {

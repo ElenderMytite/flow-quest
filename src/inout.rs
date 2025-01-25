@@ -62,10 +62,10 @@ pub fn print_tree(node: Statement, depth: usize) {
             println!("{}Get: {}", indent, name);
         }
         ExpressionType::Name(name) => println!("{}Name: {:?}", indent, name),
-        ExpressionType::Define { value, like } => 
+        ExpressionType::Define {link, like } => 
         {
             println!("{}Define:", indent);
-            print_tree(value.clone(), depth + 1);
+            print_tree(link.clone(), depth + 1);
             println!("{}As:", indent);
             print_module_path(Some(like.clone()), depth + 1);
         }
