@@ -91,6 +91,12 @@ fn parse_statement(tokens: &mut Vec<Token>) -> Rc<ExpressionType> {
                 shift(tokens);
                 parse_if_statement(tokens)
             }
+            3 => {
+                shift(tokens);
+                let name = shift(tokens).get_string_from_name();
+                let value: Statement = get_data_from_chain(tokens).into();
+                Rc::new(ExpressionType::Set{name,value})
+            }
             4 => {
                 shift(tokens);
                 let link = parse_expression(tokens, 1).into();

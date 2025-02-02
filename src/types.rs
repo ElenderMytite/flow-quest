@@ -59,7 +59,7 @@ pub enum ExpressionType {
     OutExpr { expr: Statement, like: Path },
     In(String),
     Jump(bool),
-    Set,
+    Set{name: String,value: Statement},
 }
 #[derive(Debug,Clone,PartialEq)]
 pub enum ActionType {

@@ -167,7 +167,10 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowLi
             ast_to_ir(statement, ir, listener);
             ir.push(IR::Store(module_path));
         }
-        ExpressionType::Set => {}
+        ExpressionType::Set{ name, value} => {
+            ast_to_ir(value, ir, listener);
+            ir.push(IR::Store(name));
+        }
         ExpressionType::Nil => ir.push(IR::Nil),
         ExpressionType::Name(s) => {
             ir.push(IR::Load(s));
@@ -305,6 +308,7 @@ pub fn execute(
                 heap.insert(name.clone(), value);
             }
             IR::Load(name) => {
+                println!("load: {}; heap: {:?}", name, heap);
                 stack.push(heap[name].clone());
             }
             IR::Jump(again) => {

@@ -80,6 +80,12 @@ pub fn print_tree(node: Statement, depth: usize) {
             let place = if *up {String::from("up")} else {String::from("down")};
             println!("{}Jump: {}", indent, place);
         }
+        ExpressionType::Set{name,value} => 
+        {
+            println!("{}Set:", indent);
+            print_module_path(Some(name.clone()), depth + 1);
+            print_tree(value.clone(), depth + 1);
+        }
         #[allow(unreachable_patterns)]
         _ => println!("{}something: {:?}", indent, node),
     }
