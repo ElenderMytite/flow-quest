@@ -2,7 +2,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::{flow, inout::*};
-use crate::intermediate_representation::{ast_to_ir, execute, StackVarType};
+use crate::intermediate_representation::{ast_to_ir, execute};
+use crate::types::StackVarType;
 use crate::lexer::tokenize_code;
 use crate::parser::*;
 use crate::types::Statement;

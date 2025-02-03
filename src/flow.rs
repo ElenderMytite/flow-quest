@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use crate::intermediate_representation::StackVarType;
+use crate::types::StackVarType;
 
 #[derive(Debug, Clone)]
 pub enum FlowListener{

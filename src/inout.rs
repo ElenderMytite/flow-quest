@@ -1,7 +1,7 @@
 use std::{borrow::Borrow, fs::File, io::{self, Read}};
 use crate::types::{ExpressionType, Path, Statement};
 pub fn read_file_contents(filename: &str) -> io::Result<String> {
-    let mut file = File::open(String::from("code/")+filename + ".txt")?;
+    let mut file = File::open(String::from("code/")+filename + ".nq")?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
     Ok(contents)

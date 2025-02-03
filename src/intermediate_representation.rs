@@ -1,106 +1,12 @@
 use crate::flow::{FlowListener, FlowStreamer};
-use crate::types::{BlockType, ExpressionType, Statement, ActionType, ComparsionType};
-use core::cmp::{Eq, Ord, PartialEq, PartialOrd};
+use crate::types::{ActionType, BlockType, ComparsionType, ExpressionType, StackVarType, Statement};
 use std::cell::RefCell;
-use std::ops::{Add, Div, Mul, Not, Sub};
 #[derive(Debug, Clone)]
 #[allow(unused_variables, dead_code)]
 pub enum MatchPattern {
     Var(String),
     Val(Vec<IR>),
     Unused,
-}
-#[derive(Debug, Clone)]
-pub enum StackVarType {
-    Tuple(Vec<StackVarType>),
-    Procedure(Vec<IR>),
-    Num(isize),
-    Bool(bool),
-}
-impl StackVarType {
-    pub fn get_code(&self) -> Vec<IR>{
-        match self {
-            StackVarType::Procedure(code) => code.clone(),
-            _ => panic!("Type mismatch: not a procedure"),
-        }
-    }
-    
-}
-impl Eq for StackVarType {}
-impl PartialEq for StackVarType {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => a == b,
-            (StackVarType::Bool(a), StackVarType::Bool(b)) => a == b,
-            (StackVarType::Tuple(t1), StackVarType::Tuple(t2)) => t1 == t2,
-            _ => false,
-        }
-    }
-}
-impl Ord for StackVarType {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => a.cmp(b),
-            _ => panic!("Type mismatch"),
-        }
-    }
-}
-impl PartialOrd for StackVarType {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => a.partial_cmp(b),
-            _ => None,
-        }
-    }
-}
-impl Not for StackVarType {
-    type Output = Self;
-    fn not(self) -> Self {
-        match self {
-            StackVarType::Bool(b) => StackVarType::Bool(!b),
-            StackVarType::Num(v) => StackVarType::Num(-v),
-            StackVarType::Tuple(_) => todo!(),
-            StackVarType::Procedure(_) => todo!(),
-        }
-    }
-}
-impl Add for StackVarType {
-    type Output = Self;
-    fn add(self, other: Self) -> Self {
-        match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => StackVarType::Num(a + b),
-            (StackVarType::Bool(a), StackVarType::Bool(b)) => StackVarType::Bool(a || b),
-            _ => panic!("Type mismatch"),
-        }
-    }
-}
-impl Sub for StackVarType {
-    type Output = Self;
-    fn sub(self, other: Self) -> Self {
-        match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => StackVarType::Num(a - b),
-            _ => panic!("Type mismatch"),
-        }
-    }
-}
-impl Mul for StackVarType {
-    type Output = Self;
-    fn mul(self, other: Self) -> Self {
-        match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => StackVarType::Num(a * b),
-            (StackVarType::Bool(a), StackVarType::Bool(b)) => StackVarType::Bool(a && b),
-            _ => panic!("Type mismatch"),
-        }
-    }
-}
-impl Div for StackVarType {
-    type Output = Self;
-    fn div(self, other: Self) -> Self {
-        match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => StackVarType::Num(a / b),
-            _ => panic!("Type mismatch"),
-        }
-    }
 }
 #[allow(unused)]
 #[derive(Debug, Clone)]
@@ -370,7 +276,6 @@ pub fn execute(
             }
         }
         index += 1;
-        // println!("instruction: {:#?}; stack: {:#?}; index: {}", instruction,stack,index);
     }
     stack
 }
