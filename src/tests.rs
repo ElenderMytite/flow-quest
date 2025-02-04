@@ -30,9 +30,16 @@ fn run_test_math() {
     );
 }
 #[test]
-fn run_test_dynnamic_if() {
+fn run_test_if() {
     run_test_template_oneline(
         String::from("{? 1000 >= 123 + 0234 234*5 + 2 !-? ==  354 + 234.}."),
         RefCell::new(vec![StackVarType::Num(1172)]),
     );
+}
+#[test]
+fn run_test_fib() {
+    run_test_template_file(
+        "fib_fourth",
+        RefCell::new(vec![StackVarType::Num(0),StackVarType::Num(1),StackVarType::Num(1),StackVarType::Num(2),
+                            StackVarType::Num(3),StackVarType::Num(5),StackVarType::Num(8),StackVarType::Num(13)]))
 }
