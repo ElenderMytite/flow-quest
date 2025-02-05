@@ -9,10 +9,12 @@ Node quest is a ***compiler***.
 It is a strongly typed language(not yet).
 
 ## Paradigm
-Node quest uses its own paradigm (I don't know did somebody use it before).
+Node quest has its own paradigm (I don't know did somebody use it before). This paradigm is similar to OOP.
 
 ### *I called it neuron paradigm.*
 This paradigm implies that the program is a complex neural network. Each neuron in the program can have different difficulty.
+Paradigm is similar to object oriented programming but unlike it neuron paradigm is focusing on transfering data between neurons with minimum transformation of it. 
+###### (In fact I have not started yet the neuron paradigm)
 
 ### Neurons(nodes)
 The node(neuron) is a mini program so you can have an entire program in one node(!) or(and) have neurons inside other neurons.
