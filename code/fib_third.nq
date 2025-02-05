@@ -3,7 +3,7 @@ $ 0 -- prev,
 $ 1 -- cur,
 {
     ? i = 0 do stop,
-    $ {prev.} -- res,
+    $ prev -- res,
     % i -- i - 1
     % prev -- cur,
     % cur -- prev + res,

@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, fs::File, io::{self, Read}};
+use std::{borrow::Borrow, fs::File, io::{self, stdin, Read}};
 use crate::types::{ExpressionType, Path, Statement};
 pub fn read_file_contents(filename: &str) -> io::Result<String> {
     let mut file = File::open(String::from("code/")+filename + ".nq")?;
@@ -6,6 +6,40 @@ pub fn read_file_contents(filename: &str) -> io::Result<String> {
     file.read_to_string(&mut contents)?;
     Ok(contents)
 }
+
+pub fn get_way_to_run() -> String {
+    let mut option: String = String::from("");
+    let mut code: String = String::from("");
+    let mut path: String = String::from("");
+    println!("choose option: 1. code in terminal 2.read code from file ");
+    stdin().read_line(&mut option).expect("cannot readline");
+    match option.as_str() {
+        "1\r\n" => {
+            println!("please input code: ");
+            stdin().read_line(&mut code).expect("cannot codeline");
+            code
+        }
+        "2\r\n" => {
+            println!("please input file name (without format): ");
+            stdin().read_line(&mut path).expect("cannot readpath");
+            path.truncate(path.len() - 2);
+            let code = read_file_contents(path.as_str()).expect("cannot read file");
+            code 
+        }
+        _ => {
+            println!("invalid option: {:?}; try again ", option);
+            get_way_to_run()
+        }
+    }
+}
+
+pub fn ask_to_do_smth(text: &str, ) -> bool {
+    let mut option: String = String::from("");
+    println!("choose option: y: {text} n: do not {text} ");
+    stdin().read_line(&mut option).expect("cannot readline");
+    return option.as_str() == "y\r\n";
+}
+
 pub fn print_tree(node: Statement, depth: usize) {
     let indent = "\t".repeat(depth);
     match node.value.borrow() {

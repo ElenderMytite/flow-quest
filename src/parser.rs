@@ -168,27 +168,6 @@ fn parse_keyword_statement(tokens: &mut Vec<Token>, keyword: KeyWord) -> Rc<Expr
                 like: None,
             })
         }
-        KeyWord::Do => {
-            match tokens[0].clone() {
-                Token::Keyword(word) => match word {
-                    KeyWord::Again => {
-                        shift(tokens);
-                        Rc::new(ExpressionType::Jump(true))
-                    }
-                    KeyWord::Stop => {
-                        shift(tokens);
-                        Rc::new(ExpressionType::Jump(false))
-                    }
-                    _ => panic!("not implemented with this keyword: {:?}", word),
-                },
-                Token::Name(_) => {
-                    panic!("not implemented yet DO with name")
-                }
-                _ => {
-                    panic!("expected name or keyword; found: {:?}", tokens[0])
-                }
-            }
-        }
         _ => panic!(
             "again and stop can be used with do only; current keyword: {:?}",
             keyword
