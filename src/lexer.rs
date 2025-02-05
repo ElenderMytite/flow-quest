@@ -123,9 +123,6 @@ fn tokenize_symbol_combination(chars: &mut Vec<char>, first: char) -> TokenV {
             "=>" => TokenV::Mark(15),
             "->" => TokenV::Mark(16),
 
-
-            
-            
             "=" => TokenV::Comparsion(1),
             ">" => TokenV::Comparsion(2),
             "<" => TokenV::Comparsion(3),
