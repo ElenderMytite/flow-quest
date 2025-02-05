@@ -6,31 +6,31 @@ use crate::intermediate_representation::IR;
 #[derive(Debug,Clone,PartialEq)]
 pub struct Statement
 {
-    pub value: Rc<ExpressionType>,
+    pub value: Rc<StatementV>,
 }
 impl Statement {
-    pub fn new(value: Rc<ExpressionType>, ) -> Self {
+    pub fn new(value: Rc<StatementV>, ) -> Self {
         Self { value}
     }
-    pub fn get_ast(&self) -> ExpressionType {
+    pub fn get_ast(&self) -> StatementV {
         self.value.as_ref().clone()
     }
 }
-impl Into<Statement> for Rc<ExpressionType> {
+impl Into<Statement> for Rc<StatementV> {
     fn into(self) -> Statement {
         Statement::new(self)
     }
 }
-impl From<Statement> for Rc<ExpressionType> {
-    fn from(statement: Statement) -> Rc<ExpressionType> {
+impl From<Statement> for Rc<StatementV> {
+    fn from(statement: Statement) -> Rc<StatementV> {
         statement.value
     }
     
 }
 pub type Path = Option<String>;
 #[derive(Debug,Clone,PartialEq)]
-pub enum ExpressionType {
-    Block(Vec<Statement>,BlockType),
+pub enum StatementV {
+    Block(Vec<Statement>,BlockV),
     Define{link: Statement,like: String},
     Assign(String, Statement),
     Set{name: String,value: Statement},
@@ -38,16 +38,16 @@ pub enum ExpressionType {
     Name(String),
     Bool(bool),
     Number(isize),
-    Comparsion(ComparsionType, Statement, Statement),
-    OperationBool(ActionType,Statement,Option<Statement>),
-    OperationNumder(ActionType, Statement, Statement),
+    Comparsion(ComparsionV, Statement, Statement),
+    OperationBool(ActionV,Statement,Option<Statement>),
+    OperationNumder(ActionV, Statement, Statement),
     If(Statement, Statement, Option<Statement>),
     OutExpr { expr: Statement, like: Path },
     In(String),
     Jump(bool),
 }
 #[derive(Debug,Clone,PartialEq)]
-pub enum ActionType {
+pub enum ActionV {
     Not,
     And,
     Or,
@@ -57,7 +57,7 @@ pub enum ActionType {
     Multiply,
 }
 #[derive(Debug,Clone,PartialEq)]
-pub enum ComparsionType {
+pub enum ComparsionV {
     Equal,
     Less,
     Greater,
@@ -66,99 +66,185 @@ pub enum ComparsionType {
     GreaterOrEqual,
 }
 #[derive(Debug,Clone,PartialEq)]
-pub enum BlockType {
+pub enum BlockV {
     Evaluate,
     Draft,
 }
 #[derive(Debug,Clone)]
-pub enum StackVarType {
-    Tuple(Vec<StackVarType>),
+pub enum VarT {
+    Tuple(Vec<VarT>),
     Procedure(Vec<IR>),
     Num(isize),
     Bool(bool),
 }
-impl StackVarType {
+impl VarT {
     pub fn get_code(&self) -> Vec<IR>{
         match self {
-            StackVarType::Procedure(code) => code.clone(),
+            VarT::Procedure(code) => code.clone(),
             _ => panic!("Type mismatch: not a procedure"),
         }
     }
     
 }
-impl Eq for StackVarType {}
-impl PartialEq for StackVarType {
+impl Eq for VarT {}
+impl PartialEq for VarT {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => a == b,
-            (StackVarType::Bool(a), StackVarType::Bool(b)) => a == b,
-            (StackVarType::Tuple(t1), StackVarType::Tuple(t2)) => t1 == t2,
+            (VarT::Num(a), VarT::Num(b)) => a == b,
+            (VarT::Bool(a), VarT::Bool(b)) => a == b,
+            (VarT::Tuple(t1), VarT::Tuple(t2)) => t1 == t2,
             _ => false,
         }
     }
 }
-impl Ord for StackVarType {
+impl Ord for VarT {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => a.cmp(b),
+            (VarT::Num(a), VarT::Num(b)) => a.cmp(b),
             _ => panic!("Type mismatch"),
         }
     }
 }
-impl PartialOrd for StackVarType {
+impl PartialOrd for VarT {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => a.partial_cmp(b),
+            (VarT::Num(a), VarT::Num(b)) => a.partial_cmp(b),
             _ => None,
         }
     }
 }
-impl Not for StackVarType {
+impl Not for VarT {
     type Output = Self;
     fn not(self) -> Self {
         match self {
-            StackVarType::Bool(b) => StackVarType::Bool(!b),
-            StackVarType::Num(v) => StackVarType::Num(-v),
-            StackVarType::Tuple(_) => todo!(),
-            StackVarType::Procedure(_) => todo!(),
+            VarT::Bool(b) => VarT::Bool(!b),
+            VarT::Num(v) => VarT::Num(-v),
+            VarT::Tuple(_) => todo!(),
+            VarT::Procedure(_) => todo!(),
         }
     }
 }
-impl Add for StackVarType {
+impl Add for VarT {
     type Output = Self;
     fn add(self, other: Self) -> Self {
         match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => StackVarType::Num(a + b),
-            (StackVarType::Bool(a), StackVarType::Bool(b)) => StackVarType::Bool(a || b),
+            (VarT::Num(a), VarT::Num(b)) => VarT::Num(a + b),
+            (VarT::Bool(a), VarT::Bool(b)) => VarT::Bool(a || b),
             _ => panic!("Type mismatch"),
         }
     }
 }
-impl Sub for StackVarType {
+impl Sub for VarT {
     type Output = Self;
     fn sub(self, other: Self) -> Self {
         match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => StackVarType::Num(a - b),
+            (VarT::Num(a), VarT::Num(b)) => VarT::Num(a - b),
             _ => panic!("Type mismatch"),
         }
     }
 }
-impl Mul for StackVarType {
+impl Mul for VarT {
     type Output = Self;
     fn mul(self, other: Self) -> Self {
         match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => StackVarType::Num(a * b),
-            (StackVarType::Bool(a), StackVarType::Bool(b)) => StackVarType::Bool(a && b),
+            (VarT::Num(a), VarT::Num(b)) => VarT::Num(a * b),
+            (VarT::Bool(a), VarT::Bool(b)) => VarT::Bool(a && b),
             _ => panic!("Type mismatch"),
         }
     }
 }
-impl Div for StackVarType {
+impl Div for VarT {
     type Output = Self;
     fn div(self, other: Self) -> Self {
         match (self, other) {
-            (StackVarType::Num(a), StackVarType::Num(b)) => StackVarType::Num(a / b),
+            (VarT::Num(a), VarT::Num(b)) => VarT::Num(a / b),
             _ => panic!("Type mismatch"),
         }
     }
+}
+#[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
+pub enum TokenV {
+    Skip,
+    Brackets { id: u8, is_opened: bool },
+    Sign(u8),
+    Bool(bool),
+    Number(isize),
+    Name(String),
+    Mark(u8),
+    Keyword(WordT),
+    Comparsion(u8),
+    Range(i8),
+    Colon(bool),
+    Dot(bool),
+    EOF,
+}
+impl TokenV {
+    pub fn get_int_value(&self) -> isize {
+        match &self {
+            TokenV::Number(v) => *v,
+            TokenV::Name(_) => panic!("trying to get name"),
+            TokenV::Keyword(_) => panic!("trying to get keyword"),
+            _ => panic!("Unexpected token while trying to get int value"),
+        }
+    }
+    pub fn get_string_from_name(&self) -> String {
+        match &self {
+            TokenV::Name(name) => name.clone(),
+            _ => panic!("expected name"),
+        }
+    }
+    pub fn is_operation(&self) -> bool {
+        //print!("{:?}", self);
+        match &self {
+            TokenV::Mark(1 | 7 | 9) | TokenV::Comparsion(_) | TokenV::Sign(_) => true,
+            _ => false,
+        }
+    }
+    pub fn get_operation_priorety(&self) -> u8 {
+        match &self {
+            TokenV::Comparsion(_) => 1,
+            TokenV::Sign(1..=2) => 5,
+            TokenV::Sign(3..=4) => 6,
+            TokenV::Mark(7) => 2,
+            TokenV::Mark(9) => 3,
+            TokenV::Mark(1) => 4,
+            _ => 0,
+        }
+    }
+    pub fn token_to_action_type(&self) -> ActionV {
+        match &self {
+            TokenV::Sign(1) => ActionV::Plus,
+            TokenV::Sign(2) => ActionV::Minus,
+            TokenV::Sign(3) => ActionV::Multiply,
+            TokenV::Sign(4) => ActionV::Divide,
+            TokenV::Mark(1) => ActionV::Not,
+            TokenV::Mark(7) => ActionV::And,
+            TokenV::Mark(9) => ActionV::Or,
+            _ => panic!("invalid action type"),
+        }
+    }
+    pub fn token_to_comparsion_type(&self) -> ComparsionV {
+        match &self {
+            TokenV::Comparsion(id) => match id {
+                1 => ComparsionV::Equal,
+                2 => ComparsionV::Greater,
+                3 => ComparsionV::Less,
+                4 => ComparsionV::NotEqual,
+                5 => ComparsionV::GreaterOrEqual,
+                6 => ComparsionV::LessOrEqual,
+                _ => panic!("invalid comparsion type id"),
+            },
+            _ => panic!("expected comparsion"),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
+pub enum WordT {
+    In,
+    Out,
+    Go,
+    Stop,
+    Again,
 }

@@ -1,148 +1,41 @@
-use crate::types::{ActionType, ComparsionType};
+use crate::{parser::shift, types::{TokenV, WordT}};
 
-#[derive(Debug, Clone, PartialEq)]
-#[allow(dead_code)]
-pub enum Token {
-    From,
-    Brackets { id: u8, is_opened: bool },
-    Sign(u8),
-    Number(isize),
-    Name(String),
-    Mark(u8),
-    Keyword(KeyWord),
-    Comparsion(u8),
-    Range(i8),
-    Colon(bool),
-    Dot(bool),
-    EOF,
-}
-impl Token {
-    pub fn get_int_value(&self) -> isize {
-        match &self {
-            Token::Number(v) => *v,
-            Token::Name(_) => panic!("trying to get name"),
-            Token::Keyword(_) => panic!("trying to get keyword"),
-            _ => panic!("Unexpected token while trying to get int value"),
-        }
-    }
-    pub fn get_string_from_name(&self) -> String {
-        match &self {
-            Token::Name(name) => name.clone(),
-            _ => panic!("expected name"),
-        }
-    }
-    pub fn is_operation(&self) -> bool {
-        //print!("{:?}", self);
-        match &self {
-            Token::Mark(1 | 7 | 9) | Token::Comparsion(_) | Token::Sign(_) => true,
-            _ => false,
-        }
-    }
-    pub fn get_operation_priorety(&self) -> u8 {
-        match &self {
-            Token::Comparsion(_) => 1,
-            Token::Sign(1..=2) => 5,
-            Token::Sign(3..=4) => 6,
-            Token::Mark(7) => 2,
-            Token::Mark(9) => 3,
-            Token::Mark(1) => 4,
-            _ => 0,
-        }
-    }
-    pub fn token_to_action_type(&self) -> ActionType {
-        match &self {
-            Token::Sign(1) => ActionType::Plus,
-            Token::Sign(2) => ActionType::Minus,
-            Token::Sign(3) => ActionType::Multiply,
-            Token::Sign(4) => ActionType::Divide,
-            Token::Mark(1) => ActionType::Not,
-            Token::Mark(7) => ActionType::And,
-            Token::Mark(9) => ActionType::Or,
-            _ => panic!("invalid action type"),
-        }
-    }
-    pub fn token_to_comparsion_type(&self) -> ComparsionType {
-        match &self {
-            Token::Comparsion(id) => match id {
-                1 => ComparsionType::Equal,
-                2 => ComparsionType::Greater,
-                3 => ComparsionType::Less,
-                4 => ComparsionType::NotEqual,
-                5 => ComparsionType::GreaterOrEqual,
-                6 => ComparsionType::LessOrEqual,
-                _ => panic!("invalid comparsion type id"),
-            },
-            _ => panic!("expected comparsion"),
-        }
-    }
-}
-#[derive(Debug, Clone, PartialEq)]
-#[allow(dead_code)]
-pub enum KeyWord {
-    In,
-    Out,
-    Do,
-    Stop,
-    Again,
-}
-pub fn tokenize_code(eq: String) -> Vec<Token> {
+pub fn tokenize_code(eq: String) -> Vec<TokenV> {
     let mut chars: Vec<char> = eq.chars().collect();
-    let mut tokens: Vec<Token> = Vec::new();
+    let mut tokens: Vec<TokenV> = Vec::new();
     while chars.len() > 0 {
-        let i = chars.remove(0);
-        // println!("i: {i}");
+        let i = shift(&mut chars);
         match i {
-            '_' => tokens.push(Token::From),
+            '_' => tokens.push(TokenV::Skip),
 
-            '(' => tokens.push(Token::Brackets {
+            '(' => tokens.push(TokenV::Brackets {
                 id: 1,
                 is_opened: true,
             }),
-            ')' => tokens.push(Token::Brackets {
+            ')' => tokens.push(TokenV::Brackets {
                 id: 1,
                 is_opened: false,
             }),
 
-            '[' => tokens.push(Token::Brackets {
+            '[' => tokens.push(TokenV::Brackets {
                 id: 2,
                 is_opened: true,
             }),
-            ']' => tokens.push(Token::Brackets {
+            ']' => tokens.push(TokenV::Brackets {
                 id: 2,
                 is_opened: false,
             }),
 
-            '{' => tokens.push(Token::Brackets {
+            '{' => tokens.push(TokenV::Brackets {
                 id: 3,
                 is_opened: true,
             }),
-            '}' => tokens.push(Token::Brackets {
+            '}' => tokens.push(TokenV::Brackets {
                 id: 3,
                 is_opened: false,
             }),
 
-            '+' => tokens.push(Token::Sign(1)),
-            '-' => tokens.push(tokenize_multi_symbol(&mut chars, i)),
-            '*' => tokens.push(Token::Sign(3)),
-            '/' => tokens.push(Token::Sign(4)),
-
-            '=' => tokens.push(tokenize_multi_symbol(&mut chars, i)),
-            '<' => tokens.push(tokenize_multi_symbol(&mut chars, i)),
-            '>' => tokens.push(tokenize_multi_symbol(&mut chars, i)),
-
-            '!' => tokens.push(tokenize_multi_symbol(&mut chars, i)),
-            '~' => tokens.push(Token::Mark(13)),
-            '@' => tokens.push(Token::Mark(2)),
-            '#' => tokens.push(Token::Mark(3)),
-            '$' => tokens.push(Token::Mark(4)),
-            '%' => tokens.push(Token::Mark(5)),
-            '^' => tokens.push(Token::Mark(6)),
-            '&' => tokens.push(Token::Mark(7)),
-            '?' => tokens.push(Token::Mark(8)),
-            '|' => tokens.push(Token::Mark(9)),
-
-            '.' => tokens.push(tokenize_multi_symbol(&mut chars, i)),
-            ',' => tokens.push(tokenize_multi_symbol(&mut chars, i)),
+            val if val.is_ascii_punctuation() => tokens.push(tokenize_symbol_combination(&mut chars, i)),
 
             '\n' | '\r' | ' ' => (),
 
@@ -153,10 +46,10 @@ pub fn tokenize_code(eq: String) -> Vec<Token> {
             _ => println!("non declared symbol"),
         }
     }
-    tokens.push(Token::EOF);
+    tokens.push(TokenV::EOF);
     tokens
 }
-fn tokenize_name(chars: &mut Vec<char>, first: char) -> Token {
+fn tokenize_name(chars: &mut Vec<char>, first: char) -> TokenV {
     let mut name: String = String::from(first);
     loop {
         if chars.len() > 0 {
@@ -170,19 +63,18 @@ fn tokenize_name(chars: &mut Vec<char>, first: char) -> Token {
         name.push(i);
     }
     match name.to_lowercase().as_str() {
-        "in" => Token::Keyword(KeyWord::In),
-        "out" => Token::Keyword(KeyWord::Out),
-        "do" => Token::Keyword(KeyWord::Do),
-        "stop" => Token::Keyword(KeyWord::Stop),
-        "again" => Token::Keyword(KeyWord::Again),
-        _ => Token::Name(name),
+        "in" => TokenV::Keyword(WordT::In),
+        "out" => TokenV::Keyword(WordT::Out),
+        "do" => TokenV::Keyword(WordT::Go),
+        "stop" => TokenV::Keyword(WordT::Stop),
+        "again" => TokenV::Keyword(WordT::Again),
+        _ => TokenV::Name(name),
     }
 }
-#[allow(dead_code)]
-fn tokenize_number(chars: &mut Vec<char>, first: char) -> Token {
+fn tokenize_number(chars: &mut Vec<char>, first: char) -> TokenV {
     let mut number: String = String::from(first);
     if chars.len() == 0 {
-        return Token::Number(0);
+        return TokenV::Number(0);
     }
     loop {
         if chars.len() > 0 {
@@ -195,89 +87,60 @@ fn tokenize_number(chars: &mut Vec<char>, first: char) -> Token {
         let i = chars.remove(0);
         number.push(i);
     }
-    Token::Number(number.parse().unwrap())
+    TokenV::Number(number.parse().unwrap())
 }
 #[allow(dead_code)]
-fn tokenize_multi_symbol(chars: &mut Vec<char>, first: char) -> Token {
-    if chars.len() > 2 {
-        match first {
-            '-' => match chars[0] {
-                '-' => {
-                    chars.remove(0);
-                    Token::Mark(14)
-                }
-                _ => Token::Sign(2),
-            },
-            '!' => match chars[0] {
-                '!' => {
-                    chars.remove(0);
-                    Token::Mark(10)
-                }
-                '=' => {
-                    chars.remove(0);
-                    Token::Comparsion(4)
-                }
-                '-' => {
-                    chars.remove(0);
-                    Token::Mark(12)
-                }
-                _ => Token::Mark(1),
-            },
-            '=' => match chars[0] {
-                '!' => {
-                    chars.remove(0);
-                    Token::Comparsion(4)
-                }
-                '=' => {
-                    chars.remove(0);
-                    Token::Mark(11)
-                }
-                '>' => {
-                    chars.remove(0);
-                    Token::Comparsion(5)
-                }
-                '<' => {
-                    chars.remove(0);
-                    Token::Comparsion(6)
-                }
-                _ => Token::Comparsion(1),
-            },
-            '>' => match chars[0] {
-                '=' => {
-                    chars.remove(0);
-                    Token::Comparsion(5)
-                }
-                _ => Token::Comparsion(2),
-            },
-            '<' => match chars[0] {
-                '=' => {
-                    chars.remove(0);
-                    Token::Comparsion(6)
-                }
-                _ => Token::Comparsion(3),
-            },
-            '.' => match chars[0] {
-                '.' => Token::Range(0),
-                ',' => Token::Range(1),
-                _ => Token::Dot(false),
-            },
-            ',' => match chars[0] {
-                '.' => Token::Range(-1),
-                ',' => Token::Range(2),
-                _ => Token::Dot(true),
-            },
-            _ => panic!("cant two symbol this: {}", first),
+fn tokenize_symbol_combination(chars: &mut Vec<char>, first: char) -> TokenV {
+    let mut symbol_art:Vec<char> = vec![first];
+    while chars.len() > 0 {
+        if !chars[0].is_ascii_punctuation() {
+            break;
         }
-    } else {
-        match first {
-            ',' => Token::Dot(true),
-            '.' => Token::Dot(false),
-            '<' => Token::Comparsion(3),
-            '>' => Token::Comparsion(2),
-            '=' => Token::Comparsion(1),
-            '!' => Token::Mark(1),
-            '-' => Token::Sign(2),
-            _ => panic!("cant two symbol this: {}", first),
-        }
+        let i = shift(chars);
+        symbol_art.push(i);
+        
+    }
+        match symbol_art.iter().collect::<String>().as_str() {
+            "!!" => TokenV::Bool(false),
+            "==" => TokenV::Bool(true),
+
+            "~" => TokenV::Mark(0),
+            "!" => TokenV::Mark(1),
+            "@" => TokenV::Mark(2),
+            "#" => TokenV::Mark(3),
+            "$" => TokenV::Mark(4),
+            "%" => TokenV::Mark(5),
+            "^" => TokenV::Mark(6),
+            "&" => TokenV::Mark(7),
+            "?" => TokenV::Mark(8),
+            "|" => TokenV::Mark(9),
+
+            "!:" => TokenV::Mark(11),
+            "!-" => TokenV::Mark(12),
+            "!+" => TokenV::Mark(13),
+            
+            "--" => TokenV::Mark(14),
+            "=>" => TokenV::Mark(15),
+            "->" => TokenV::Mark(16),
+
+
+            
+            
+            "=" => TokenV::Comparsion(1),
+            ">" => TokenV::Comparsion(2),
+            "<" => TokenV::Comparsion(3),
+            "!=" | "=!" => TokenV::Comparsion(4),
+            ">=" => TokenV::Comparsion(5),
+            "<=" => TokenV::Comparsion(6),
+
+            "." => TokenV::Dot(false),
+            "," => TokenV::Dot(true),
+
+            "+" => TokenV::Sign(1),
+            "-" => TokenV::Sign(2),
+            "*" => TokenV::Sign(3),
+            "/" => TokenV::Sign(4),
+
+            _ => panic!("cant  symbol this: {}", symbol_art.iter().collect::<String>()),
     }
 }

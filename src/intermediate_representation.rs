@@ -1,5 +1,5 @@
 use crate::flow::{FlowListener, FlowStreamer};
-use crate::types::{ActionType, BlockType, ComparsionType, ExpressionType, StackVarType, Statement};
+use crate::types::{ActionV, BlockV, ComparsionV, StatementV, VarT, Statement};
 use std::cell::RefCell;
 #[derive(Debug, Clone)]
 #[allow(unused_variables, dead_code)]
@@ -49,15 +49,15 @@ pub fn assembly(code: Vec<IR>) -> String {
 }
 pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowListener>) {
     match ast_node.get_ast() {
-        ExpressionType::Block(vec, block_type) => match block_type {
-            BlockType::Evaluate => {
+        StatementV::Block(vec, block_type) => match block_type {
+            BlockV::Evaluate => {
                 let mut ir_block: Vec<IR> = Vec::new();
                 for node in vec {
                     ast_to_ir(node, &mut ir_block,listener);
                 }
                 ir.push(IR::Efine(ir_block));
             }
-            BlockType::Draft => {
+            BlockV::Draft => {
                 let mut ir_block: Vec<IR> = Vec::new();
                 for node in vec {
                     ast_to_ir(node, &mut ir_block,listener);
@@ -65,60 +65,60 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowLi
                 ir.push(IR::Code(ir_block));
             }
         },
-        ExpressionType::Define { link, like } => {
+        StatementV::Define { link, like } => {
             ast_to_ir(link, ir, listener);
             ir.push(IR::Store(like));
         }
-        ExpressionType::Assign(module_path, statement) => {
+        StatementV::Assign(module_path, statement) => {
             ast_to_ir(statement, ir, listener);
             ir.push(IR::Store(module_path));
         }
-        ExpressionType::Set{ name, value} => {
+        StatementV::Set{ name, value} => {
             ast_to_ir(value, ir, listener);
             ir.push(IR::Store(name));
         }
-        ExpressionType::Nil => ir.push(IR::Nil),
-        ExpressionType::Name(s) => {
+        StatementV::Nil => ir.push(IR::Nil),
+        StatementV::Name(s) => {
             ir.push(IR::Load(s));
         }
-        ExpressionType::Bool(v) => ir.push(IR::Bool(v)),
-        ExpressionType::Number(v) => ir.push(IR::Num(v)),
-        ExpressionType::Comparsion(comparsion_type, statement, statement1) => {
+        StatementV::Bool(v) => ir.push(IR::Bool(v)),
+        StatementV::Number(v) => ir.push(IR::Num(v)),
+        StatementV::Comparsion(comparsion_type, statement, statement1) => {
             ast_to_ir(statement, ir, listener);
             ast_to_ir(statement1, ir, listener);
             ir.push(match comparsion_type {
-                ComparsionType::Equal => IR::Eql,
-                ComparsionType::NotEqual => IR::NEql,
-                ComparsionType::Less => IR::Ls,
-                ComparsionType::Greater => IR::Gt,
-                ComparsionType::LessOrEqual => IR::LsEql,
-                ComparsionType::GreaterOrEqual => IR::GtEql,
+                ComparsionV::Equal => IR::Eql,
+                ComparsionV::NotEqual => IR::NEql,
+                ComparsionV::Less => IR::Ls,
+                ComparsionV::Greater => IR::Gt,
+                ComparsionV::LessOrEqual => IR::LsEql,
+                ComparsionV::GreaterOrEqual => IR::GtEql,
             });
         }
-        ExpressionType::OperationBool(action_type, statement, statement1) => {
+        StatementV::OperationBool(action_type, statement, statement1) => {
             ast_to_ir(statement, ir, listener);
             if let Some(statement1) = statement1 {
                 ast_to_ir(statement1, ir, listener);
             }
             ir.push(match action_type {
-                ActionType::Not => IR::Not,
-                ActionType::And => IR::Add,
-                ActionType::Or => IR::Mul,
+                ActionV::Not => IR::Not,
+                ActionV::And => IR::Add,
+                ActionV::Or => IR::Mul,
                 _ => todo!(),
             });
         }
-        ExpressionType::OperationNumder(action_type, statement, statement1) => {
+        StatementV::OperationNumder(action_type, statement, statement1) => {
             ast_to_ir(statement, ir, listener);
             ast_to_ir(statement1, ir, listener);
             ir.push(match action_type {
-                ActionType::Plus => IR::Add,
-                ActionType::Minus => IR::Sub,
-                ActionType::Divide => IR::Div,
-                ActionType::Multiply => IR::Mul,
+                ActionV::Plus => IR::Add,
+                ActionV::Minus => IR::Sub,
+                ActionV::Divide => IR::Div,
+                ActionV::Multiply => IR::Mul,
                 _ => todo!(),
             });
         }
-        ExpressionType::If(statement, statement1, statement2) => {
+        StatementV::If(statement, statement1, statement2) => {
             ast_to_ir(statement, ir, listener);
             ir.push(IR::Case(
                 vec![MatchPattern::Val(vec![IR::Bool(true)])],
@@ -129,31 +129,31 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowLi
                 ast_to_ir(statement2, ir, listener);
             }
         }
-        ExpressionType::OutExpr { expr, like: _ } => {
+        StatementV::OutExpr { expr, like: _ } => {
             ast_to_ir(expr, ir, listener);
             ir.push(IR::Output(RefCell::new(FlowListener::Console)));
         }
-        ExpressionType::In(_) => ir.push(IR::Input(RefCell::new(FlowStreamer::Console))),
-        ExpressionType::Jump(t) => ir.push(IR::Jump(t)),
+        StatementV::In(_) => ir.push(IR::Input(RefCell::new(FlowStreamer::Console))),
+        StatementV::Jump(t) => ir.push(IR::Jump(t)),
     }
 }
 use std::collections::HashMap;
 #[allow(dead_code)]
 pub fn execute(
     ir: Vec<IR>,
-    heap: &mut HashMap<String, StackVarType>,
-) -> Vec<StackVarType> {
-    let mut stack: Vec<StackVarType> = Vec::new();
-    heap.insert(String::from("s-main"), StackVarType::Procedure(ir.clone()));
+    heap: &mut HashMap<String, VarT>,
+) -> Vec<VarT> {
+    let mut stack: Vec<VarT> = Vec::new();
+    heap.insert(String::from("s-main"), VarT::Procedure(ir.clone()));
     let mut index = 0;
     while ir.len() > index {
         let instruction = ir.get(index).unwrap();
         match instruction {
             IR::Nil => (),
-            IR::Num(n) => stack.push(StackVarType::Num(*n)),
-            IR::Bool(b) => stack.push(StackVarType::Bool(*b)),
+            IR::Num(n) => stack.push(VarT::Num(*n)),
+            IR::Bool(b) => stack.push(VarT::Bool(*b)),
             IR::Code(c) => {
-                stack.push(StackVarType::Procedure(c.clone()));
+                stack.push(VarT::Procedure(c.clone()));
             }
             IR::Add => {
                 let a = stack.pop().unwrap();
@@ -182,32 +182,32 @@ pub fn execute(
             IR::Eql => {
                 let a = stack.pop().unwrap();
                 let b = stack.pop().unwrap();
-                stack.push(StackVarType::Bool(a == b));
+                stack.push(VarT::Bool(a == b));
             }
             IR::NEql => {
                 let a = stack.pop().unwrap();
                 let b = stack.pop().unwrap();
-                stack.push(StackVarType::Bool(a != b));
+                stack.push(VarT::Bool(a != b));
             }
             IR::Ls => {
                 let a = stack.pop().unwrap();
                 let b = stack.pop().unwrap();
-                stack.push(StackVarType::Bool(a > b));
+                stack.push(VarT::Bool(a > b));
             }
             IR::Gt => {
                 let a = stack.pop().unwrap();
                 let b = stack.pop().unwrap();
-                stack.push(StackVarType::Bool(a < b));
+                stack.push(VarT::Bool(a < b));
             }
             IR::LsEql => {
                 let a = stack.pop().unwrap();
                 let b = stack.pop().unwrap();
-                stack.push(StackVarType::Bool(a >= b));
+                stack.push(VarT::Bool(a >= b));
             }
             IR::GtEql => {
                 let a = stack.pop().unwrap();
                 let b = stack.pop().unwrap();
-                stack.push(StackVarType::Bool(a <= b));
+                stack.push(VarT::Bool(a <= b));
             }
             IR::Store(name) => {
                 let value = stack.pop().unwrap();
@@ -228,7 +228,7 @@ pub fn execute(
                 stack.append(&mut execute(heap[name].get_code(), heap));
             }
             IR::Define(name, code) => {
-                heap.insert(name.clone(), StackVarType::Procedure(code.clone()));
+                heap.insert(name.clone(), VarT::Procedure(code.clone()));
             }
             IR::Efine(vec) => {
                 stack.append(&mut execute(vec.clone(), heap));
@@ -279,10 +279,10 @@ pub fn execute(
     }
     stack
 }
-fn return_vector_to_tuple(v: Vec<StackVarType>) -> StackVarType {
+fn return_vector_to_tuple(v: Vec<VarT>) -> VarT {
     match v.len() {
-        0 => StackVarType::Tuple(Vec::new()),
+        0 => VarT::Tuple(Vec::new()),
         1 => v[0].clone(),
-        _ => StackVarType::Tuple(v),
+        _ => VarT::Tuple(v),
     }
 }
