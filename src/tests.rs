@@ -3,13 +3,15 @@ use std::collections::HashMap;
 
 use crate::{flow, inout::*};
 use crate::intermediate_representation::{ast_to_ir, execute};
-use crate::types::StackVarType;
+use crate::types::{TokenV, VarT};
 use crate::lexer::tokenize_code;
 use crate::parser::*;
 use crate::types::Statement;
 #[allow(dead_code)]
-fn run_test_template_oneline(expr: String, expected_result: RefCell<Vec<StackVarType>>) {
-    let tree: Statement = Statement{value: parse_program(&mut tokenize_code(expr))};
+fn run_test_template_oneline(expr: String, expected_result: RefCell<Vec<VarT>>) {
+    let mut tokens: Vec<TokenV> = tokenize_code(expr.clone());
+    println!("{:?}", tokens);
+    let tree: Statement = Statement{value: parse_program(&mut tokens)};
     print_tree(tree.clone().into(), 0);
     let mut ir = vec![];
     let listener = flow::FlowListener::Asserter(expected_result);
@@ -18,22 +20,22 @@ fn run_test_template_oneline(expr: String, expected_result: RefCell<Vec<StackVar
     execute(ir, &mut env);
 }
 #[allow(dead_code)]
-fn run_test_template_file(name: &str, result: RefCell<Vec<StackVarType>>) {
+fn run_test_template_file(name: &str, result: RefCell<Vec<VarT>>) {
     let code = read_file_contents(name).expect("cant read file while testing:");
     run_test_template_oneline(code, result);
 }
 #[test]
 fn test_fib() {
     run_test_template_file(
-        "fib_fourth",
-        RefCell::new(vec![StackVarType::Num(0),StackVarType::Num(1),StackVarType::Num(1),StackVarType::Num(2),
-                            StackVarType::Num(3),StackVarType::Num(5),StackVarType::Num(8),StackVarType::Num(13)]))
+        "fib",
+        RefCell::new(vec![VarT::Num(0),VarT::Num(1),VarT::Num(1),VarT::Num(2),
+                            VarT::Num(3),VarT::Num(5),VarT::Num(8),VarT::Num(13)]))
 }
 #[test]
 fn test_math(){
-    run_test_template_file("math", RefCell::new(vec![StackVarType::Num(128)]));
+    run_test_template_file("math", RefCell::new(vec![VarT::Num(128)]));
 }
 #[test]
 fn test_if() {
-    run_test_template_file("if", RefCell::new(vec![StackVarType::Bool(true)]));
+    run_test_template_file("if", RefCell::new(vec![VarT::Bool(true)]));
 }

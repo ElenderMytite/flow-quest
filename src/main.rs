@@ -11,10 +11,10 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 fn main() {
-    let mut tokens: Vec<lexer::Token> = lexer::tokenize_code(get_way_to_run());
+    let mut tokens: Vec<types::TokenV> = lexer::tokenize_code(get_way_to_run());
     if ask_to_do_smth("print tokens")
     {println!("{:?}", tokens);}
-    let tree: Rc<types::ExpressionType> = parse_program(&mut tokens);
+    let tree: Rc<types::StatementV> = parse_program(&mut tokens);
     assert_eq!(tokens.len(), 0);
     if ask_to_do_smth("print tree")
     {inout::print_tree(tree.clone().into(), 0);}

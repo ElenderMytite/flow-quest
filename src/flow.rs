@@ -1,21 +1,21 @@
 use std::cell::RefCell;
 
-use crate::types::StackVarType;
+use crate::types::VarT;
 
 #[derive(Debug, Clone)]
 pub enum FlowListener{
     Console,
-    Asserter(RefCell<Vec<StackVarType>>)
+    Asserter(RefCell<Vec<VarT>>)
 }
 impl FlowListener {
-    pub fn get(&self,val: StackVarType) -> bool {
+    pub fn get(&self,val: VarT) -> bool {
         match self {
             FlowListener::Console => {
                 match val {
-                    StackVarType::Num(val) => println!("{}",val),
-                    StackVarType::Bool(val) => println!("{}",val),
-                    StackVarType::Tuple(vec) => println!("{:?}",vec),
-                    StackVarType::Procedure(_) => println!("Procedure"),                 
+                    VarT::Num(val) => println!("{}",val),
+                    VarT::Bool(val) => println!("{}",val),
+                    VarT::Tuple(vec) => println!("{:?}",vec),
+                    VarT::Procedure(_) => println!("Procedure"),                 
                 }
                 true
             }
@@ -34,12 +34,12 @@ pub enum FlowStreamer{
     Console,
 }
 impl FlowStreamer {
-    pub fn send(&self) -> StackVarType{
+    pub fn send(&self) -> VarT{
         match self {
             FlowStreamer::Console => {
                 let mut input = String::new();
                 std::io::stdin().read_line(&mut input).unwrap();
-                StackVarType::Num(input.parse().unwrap())
+                VarT::Num(input.parse().unwrap())
             }
         }
     }
