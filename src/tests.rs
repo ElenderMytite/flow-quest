@@ -1,21 +1,24 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use crate::{flow, inout::*};
 use crate::intermediate_representation::{ast_to_ir, execute};
-use crate::types::{TokenV, VarT};
 use crate::lexer::tokenize_code;
 use crate::parser::*;
 use crate::types::Statement;
+use crate::types::{TokenV, VarT};
+use crate::{flow, inout::*};
+
 #[allow(dead_code)]
 fn run_test_template_oneline(expr: String, expected_result: RefCell<Vec<VarT>>) {
     let mut tokens: Vec<TokenV> = tokenize_code(expr.clone());
     println!("{:?}", tokens);
-    let tree: Statement = Statement{value: parse_program(&mut tokens)};
+    let tree: Statement = Statement {
+        value: parse_program(&mut tokens),
+    };
     print_tree(tree.clone().into(), 0);
     let mut ir = vec![];
     let listener = flow::FlowListener::Asserter(expected_result);
-    ast_to_ir(tree, &mut ir,&RefCell::new(listener));
+    ast_to_ir(tree, &mut ir, &RefCell::new(listener));
     let mut env = HashMap::new();
     execute(ir, &mut env);
 }
@@ -28,11 +31,20 @@ fn run_test_template_file(name: &str, result: RefCell<Vec<VarT>>) {
 fn test_fib() {
     run_test_template_file(
         "fib",
-        RefCell::new(vec![VarT::Num(0),VarT::Num(1),VarT::Num(1),VarT::Num(2),
-                            VarT::Num(3),VarT::Num(5),VarT::Num(8),VarT::Num(13)]))
+        RefCell::new(vec![
+            VarT::Num(0),
+            VarT::Num(1),
+            VarT::Num(1),
+            VarT::Num(2),
+            VarT::Num(3),
+            VarT::Num(5),
+            VarT::Num(8),
+            VarT::Num(13),
+        ]),
+    )
 }
 #[test]
-fn test_math(){
+fn test_math() {
     run_test_template_file("math", RefCell::new(vec![VarT::Num(128)]));
 }
 #[test]

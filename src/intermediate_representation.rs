@@ -1,5 +1,5 @@
 use crate::flow::{FlowListener, FlowStreamer};
-use crate::types::{ActionV, BlockV, ComparsionV, StatementV, VarT, Statement};
+use crate::types::{ActionV, BlockV, ComparsionV, Statement, StatementV, VarT};
 use std::cell::RefCell;
 #[derive(Debug, Clone)]
 #[allow(unused_variables, dead_code)]
@@ -8,7 +8,7 @@ pub enum MatchPattern {
     Val(Vec<IR>),
     Unused,
 }
-#[allow(unused)]
+#[allow(unused_variables, dead_code)]
 #[derive(Debug, Clone)]
 pub enum IR {
     Num(isize),
@@ -40,27 +40,25 @@ pub enum IR {
     Output(RefCell<FlowListener>),
 
     Case(Vec<MatchPattern>, usize),
-
-    Free(usize),
 }
 #[allow(dead_code, unused_variables)]
 pub fn assembly(code: Vec<IR>) -> String {
     todo!()
 }
-pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowListener>) {
+pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>, listener: &RefCell<FlowListener>) {
     match ast_node.get_ast() {
         StatementV::Block(vec, block_type) => match block_type {
             BlockV::Evaluate => {
                 let mut ir_block: Vec<IR> = Vec::new();
                 for node in vec {
-                    ast_to_ir(node, &mut ir_block,listener);
+                    ast_to_ir(node, &mut ir_block, listener);
                 }
                 ir.push(IR::Efine(ir_block));
             }
             BlockV::Draft => {
                 let mut ir_block: Vec<IR> = Vec::new();
                 for node in vec {
-                    ast_to_ir(node, &mut ir_block,listener);
+                    ast_to_ir(node, &mut ir_block, listener);
                 }
                 ir.push(IR::Code(ir_block));
             }
@@ -73,7 +71,7 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowLi
             ast_to_ir(statement, ir, listener);
             ir.push(IR::Store(module_path));
         }
-        StatementV::Set{ name, value} => {
+        StatementV::Set { name, value } => {
             ast_to_ir(value, ir, listener);
             ir.push(IR::Store(name));
         }
@@ -139,10 +137,7 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>,listener: &RefCell<FlowLi
 }
 use std::collections::HashMap;
 #[allow(dead_code)]
-pub fn execute(
-    ir: Vec<IR>,
-    heap: &mut HashMap<String, VarT>,
-) -> Vec<VarT> {
+pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarT>) -> Vec<VarT> {
     let mut stack: Vec<VarT> = Vec::new();
     heap.insert(String::from("s-main"), VarT::Procedure(ir.clone()));
     let mut index = 0;
@@ -241,14 +236,13 @@ pub fn execute(
                 }
                 let mut matched = true;
                 for pat in pattern {
-
                     match pat {
                         MatchPattern::Var(name) => {
                             heap.insert(name.clone(), stack.last().unwrap().clone());
                         }
                         MatchPattern::Val(val) => {
                             if stack.pop().unwrap()
-                            != return_vector_to_tuple(execute(val.clone(), heap))
+                                != return_vector_to_tuple(execute(val.clone(), heap))
                             {
                                 matched = false;
                                 break;
@@ -263,9 +257,6 @@ pub fn execute(
                     index = *gt;
                     continue;
                 }
-            }
-            IR::Free(size) => {
-                stack.truncate(stack.len() - size);
             }
             IR::Input(ref_cell) => {
                 stack.push(ref_cell.borrow().send());
