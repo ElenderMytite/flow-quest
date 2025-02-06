@@ -120,30 +120,12 @@ fn tokenize_symbol(chars: &mut Vec<char>) -> TokenV {
 fn tokenize_brace(chars: &mut Vec<char>) -> TokenV
 {
     match chars.pop().unwrap() {
-        '(' => TokenV::Brackets {
-            id: 1,
-            is_opened: true,
-        },
-        ')' => TokenV::Brackets {
-            id: 1,
-            is_opened: false,
-        },
-        '[' => TokenV::Brackets {
-            id: 2,
-            is_opened: true,
-        },
-        ']' => TokenV::Brackets {
-            id: 2,
-            is_opened: false,
-        },
-        '{' => TokenV::Brackets {
-            id: 3,
-            is_opened: true,
-        },
-        '}' => TokenV::Brackets {
-            id: 3,
-            is_opened: false,
-        },
+        '(' => TokenV::Brackets {id: 1,  is_opened: true},
+        ')' => TokenV::Brackets {id: 1, is_opened: false},
+        '[' => TokenV::Brackets {id: 2,  is_opened: true},
+        ']' => TokenV::Brackets {id: 2, is_opened: false},
+        '{' => TokenV::Brackets {id: 3,  is_opened: true},
+        '}' => TokenV::Brackets {id: 3, is_opened: false},
         _ => panic!("unexpected brace: {}", chars.last().unwrap()),
     }
 }

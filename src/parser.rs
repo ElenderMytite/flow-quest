@@ -1,6 +1,6 @@
-use crate::types::WordT;
-use crate::types::TokenV;
 use crate::types::Statement;
+use crate::types::TokenV;
+use crate::types::WordT;
 use crate::types::{ActionV, BlockV, StatementV};
 use core::panic;
 use std::rc::Rc;
@@ -11,25 +11,28 @@ use std::rc::Rc;
 //     }
 //     vec.remove(0)
 // }
-fn get_data_from_chain(tokens: &mut Vec<TokenV>) -> Rc<StatementV> 
-{
-    if *tokens.last().unwrap() == TokenV::Mark(14) 
-    {
+fn get_data_from_chain(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
+    if *tokens.last().unwrap() == TokenV::Mark(14) {
         tokens.pop().unwrap();
-        return parse_expression(tokens,1);
-    }
-    else {
-        panic!("expected -- while getting data from chain; found: {:?}", tokens.last().unwrap())
+        return parse_expression(tokens, 1);
+    } else {
+        panic!(
+            "expected -- while getting data from chain; found: {:?}",
+            tokens.last().unwrap()
+        )
     }
 }
 pub fn parse_program(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
-    tokens.reverse(); 
-    Rc::new(StatementV::Block(get_statements_of_block(parse_block(tokens, TokenV::EOF)), BlockV::Evaluate))
+    tokens.reverse();
+    Rc::new(StatementV::Block(
+        get_statements_of_block(parse_block(tokens, TokenV::EOF)),
+        BlockV::Evaluate,
+    ))
 }
 fn get_statements_of_block(expr: Rc<StatementV>) -> Vec<Statement> {
     match expr.as_ref() {
         StatementV::Block(blocks, _) => blocks.clone(),
-        v => vec![Statement::new(Rc::new(v.clone()))]
+        v => vec![Statement::new(Rc::new(v.clone()))],
     }
 }
 pub fn parse_block(tokens: &mut Vec<TokenV>, closing_brace: TokenV) -> Rc<StatementV> {
@@ -56,7 +59,8 @@ pub fn parse_block(tokens: &mut Vec<TokenV>, closing_brace: TokenV) -> Rc<Statem
             } else {
                 panic!(
                     "expected closing brace: {:?}; found: {:?}",
-                    closing_brace, tokens.last().unwrap()
+                    closing_brace,
+                    tokens.last().unwrap()
                 );
             }
             return stmts[0].value.clone();
@@ -74,7 +78,8 @@ pub fn parse_block(tokens: &mut Vec<TokenV>, closing_brace: TokenV) -> Rc<Statem
             } else {
                 panic!(
                     "expected closing brace: {:?}; found: {:?}",
-                    closing_brace, tokens.last().unwrap()
+                    closing_brace,
+                    tokens.last().unwrap()
                 );
             }
         }
@@ -97,20 +102,17 @@ fn parse_statement(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
                 tokens.pop().unwrap();
                 let name = tokens.pop().unwrap().get_string_from_name();
                 let value: Statement = get_data_from_chain(tokens).into();
-                Rc::new(StatementV::Set{name,value})
+                Rc::new(StatementV::Set { name, value })
             }
             4 => {
                 tokens.pop().unwrap();
                 let link = parse_expression(tokens, 1).into();
                 Rc::new(StatementV::Define {
                     link,
-                    like: 
-                    match get_data_from_chain(tokens).as_ref() {
-                        StatementV::Name(path) => {
-                            path.clone()
-                        }
+                    like: match get_data_from_chain(tokens).as_ref() {
+                        StatementV::Name(path) => path.clone(),
                         _ => panic!("expected name in defining;"),
-                    }
+                    },
                 })
             }
             5 => {
@@ -147,9 +149,7 @@ fn parse_keyword_statement(tokens: &mut Vec<TokenV>, keyword: WordT) -> Rc<State
                     tokens.pop().unwrap();
                     if let TokenV::Name(..) = tokens.last().unwrap() {
                         let tk = tokens.pop().unwrap();
-                        return Rc::new(StatementV::In(String::from(
-                            tk.get_string_from_name(),
-                        )));
+                        return Rc::new(StatementV::In(String::from(tk.get_string_from_name())));
                     }
                 }
             }
@@ -175,7 +175,6 @@ fn parse_keyword_statement(tokens: &mut Vec<TokenV>, keyword: WordT) -> Rc<State
                 TokenV::Keyword(WordT::Again) => true,
                 TokenV::Keyword(WordT::Stop) => false,
                 _ => panic!("expected again or stop"),
-
             };
             Rc::new(StatementV::Jump(repeat))
         }
@@ -200,17 +199,20 @@ fn parse_expression(tokens: &mut Vec<TokenV>, min_priority: u8) -> Rc<StatementV
                 op.token_to_action_type(),
                 left_expr,
                 right_expr,
-            )).into(),
+            ))
+            .into(),
             TokenV::Comparsion(_) => Rc::new(StatementV::Comparsion(
                 op.token_to_comparsion_type(),
                 left_expr,
                 right_expr,
-            )).into(),
+            ))
+            .into(),
             TokenV::Mark(1 | 7 | 9) => Rc::new(StatementV::OperationBool(
                 op.token_to_action_type(),
                 left_expr,
                 Some(right_expr),
-            )).into(),
+            ))
+            .into(),
             _ => panic!("Invalid operation to operate"),
         };
     }
@@ -265,15 +267,9 @@ fn parse_primary(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
             let expr: Statement = parse_expression(tokens, 5).into();
             Rc::new(StatementV::OperationBool(ActionV::Not, expr, None))
         }
-        TokenV::Number(val) => {
-            Rc::new(StatementV::Number(val))
-        }
-        TokenV::Bool(val) => {
-            Rc::new(StatementV::Bool(val))
-        }
-        TokenV::Name(name) => {
-            Rc::new(StatementV::Name(name))
-        }
+        TokenV::Number(val) => Rc::new(StatementV::Number(val)),
+        TokenV::Bool(val) => Rc::new(StatementV::Bool(val)),
+        TokenV::Name(name) => Rc::new(StatementV::Name(name)),
         TokenV::EOF => {
             tokens.insert(0, TokenV::EOF);
             Rc::new(StatementV::Nil)

@@ -1,7 +1,11 @@
-use std::{borrow::Borrow, fs::File, io::{self, stdin, Read}};
-use crate::types::{StatementV, Path, Statement};
+use crate::types::{Path, Statement, StatementV};
+use std::{
+    borrow::Borrow,
+    fs::File,
+    io::{self, stdin, Read},
+};
 pub fn read_file_contents(filename: &str) -> io::Result<String> {
-    let mut file = File::open(String::from("code/")+filename + ".nq")?;
+    let mut file = File::open(String::from("code/") + filename + ".nq")?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
     Ok(contents)
@@ -24,7 +28,7 @@ pub fn get_way_to_run() -> String {
             stdin().read_line(&mut path).expect("cannot readpath");
             path.truncate(path.len() - 2);
             let code = read_file_contents(path.as_str()).expect("cannot read file");
-            code 
+            code
         }
         _ => {
             println!("invalid option: {:?}; try again ", option);
@@ -33,7 +37,7 @@ pub fn get_way_to_run() -> String {
     }
 }
 
-pub fn ask_to_do_smth(text: &str, ) -> bool {
+pub fn ask_to_do_smth(text: &str) -> bool {
     let mut option: String = String::from("");
     println!("choose option: y: {text} n: do not {text} ");
     stdin().read_line(&mut option).expect("cannot readline");
@@ -76,12 +80,12 @@ pub fn print_tree(node: Statement, depth: usize) {
             print_tree(left.clone(), depth + 1);
             print_tree(right.clone(), depth + 1);
         }
-        StatementV::Block(vec,block_type) => {
+        StatementV::Block(vec, block_type) => {
             let capt: String = match block_type {
                 crate::types::BlockV::Evaluate => String::from("Evaluate"),
                 crate::types::BlockV::Draft => String::from("Draft"),
             };
-            println!("{}{}:", indent,capt);
+            println!("{}{}:", indent, capt);
             for stmt in vec {
                 print_tree(stmt.clone(), depth + 1);
             }
@@ -96,32 +100,30 @@ pub fn print_tree(node: Statement, depth: usize) {
             println!("{}Get: {}", indent, name);
         }
         StatementV::Name(name) => println!("{}Name: {:?}", indent, name),
-        StatementV::Define {link, like } => 
-        {
+        StatementV::Define { link, like } => {
             println!("{}Define:", indent);
             print_tree(link.clone(), depth + 1);
             println!("{}As:", indent);
             print_module_path(Some(like.clone()), depth + 1);
         }
-        StatementV::Assign(module_path, rc) => 
-        {
+        StatementV::Assign(module_path, rc) => {
             println!("{}Assign:", indent);
             print_module_path(Some(module_path.clone()), depth + 1);
             print_tree(rc.clone(), depth + 1);
         }
-        StatementV::Jump(up) => 
-        {
-            let place = if *up {String::from("up")} else {String::from("down")};
+        StatementV::Jump(up) => {
+            let place = if *up {
+                String::from("up")
+            } else {
+                String::from("down")
+            };
             println!("{}Jump: {}", indent, place);
         }
-        StatementV::Set{name,value} => 
-        {
+        StatementV::Set { name, value } => {
             println!("{}Set:", indent);
             print_module_path(Some(name.clone()), depth + 1);
             print_tree(value.clone(), depth + 1);
         }
-        #[allow(unreachable_patterns)]
-        _ => println!("{}something: {:?}", indent, node),
     }
 }
 fn print_module_path(path: Path, depth: usize) {

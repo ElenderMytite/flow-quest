@@ -1,16 +1,15 @@
-use std::rc::Rc;
 use core::ops::{Add, Div, Mul, Not, Sub};
 use std::cmp::{Eq, Ord, PartialEq, PartialOrd};
+use std::rc::Rc;
 
 use crate::intermediate_representation::IR;
-#[derive(Debug,Clone,PartialEq)]
-pub struct Statement
-{
+#[derive(Debug, Clone, PartialEq)]
+pub struct Statement {
     pub value: Rc<StatementV>,
 }
 impl Statement {
-    pub fn new(value: Rc<StatementV>, ) -> Self {
-        Self { value}
+    pub fn new(value: Rc<StatementV>) -> Self {
+        Self { value }
     }
     pub fn get_ast(&self) -> StatementV {
         self.value.as_ref().clone()
@@ -25,28 +24,27 @@ impl From<Statement> for Rc<StatementV> {
     fn from(statement: Statement) -> Rc<StatementV> {
         statement.value
     }
-    
 }
 pub type Path = Option<String>;
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StatementV {
-    Block(Vec<Statement>,BlockV),
-    Define{link: Statement,like: String},
+    Block(Vec<Statement>, BlockV),
+    Define { link: Statement, like: String },
     Assign(String, Statement),
-    Set{name: String,value: Statement},
+    Set { name: String, value: Statement },
     Nil,
     Name(String),
     Bool(bool),
     Number(isize),
     Comparsion(ComparsionV, Statement, Statement),
-    OperationBool(ActionV,Statement,Option<Statement>),
+    OperationBool(ActionV, Statement, Option<Statement>),
     OperationNumder(ActionV, Statement, Statement),
     If(Statement, Statement, Option<Statement>),
     OutExpr { expr: Statement, like: Path },
     In(String),
     Jump(bool),
 }
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ActionV {
     Not,
     And,
@@ -56,7 +54,7 @@ pub enum ActionV {
     Divide,
     Multiply,
 }
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ComparsionV {
     Equal,
     Less,
@@ -65,12 +63,12 @@ pub enum ComparsionV {
     LessOrEqual,
     GreaterOrEqual,
 }
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BlockV {
     Evaluate,
     Draft,
 }
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub enum VarT {
     Tuple(Vec<VarT>),
     Procedure(Vec<IR>),
@@ -78,13 +76,12 @@ pub enum VarT {
     Bool(bool),
 }
 impl VarT {
-    pub fn get_code(&self) -> Vec<IR>{
+    pub fn get_code(&self) -> Vec<IR> {
         match self {
             VarT::Procedure(code) => code.clone(),
             _ => panic!("Type mismatch: not a procedure"),
         }
     }
-    
 }
 impl Eq for VarT {}
 impl PartialEq for VarT {
@@ -163,9 +160,7 @@ impl Div for VarT {
     }
 }
 #[derive(Debug, Clone, PartialEq)]
-#[allow(dead_code)]
 pub enum TokenV {
-    Skip,
     Brackets { id: u8, is_opened: bool },
     Sign(u8),
     Bool(bool),
@@ -174,8 +169,6 @@ pub enum TokenV {
     Mark(u8),
     Keyword(WordT),
     Comparsion(u8),
-    Range(i8),
-    Colon(bool),
     Dot(bool),
     EOF,
 }
@@ -240,7 +233,6 @@ impl TokenV {
     }
 }
 #[derive(Debug, Clone, PartialEq)]
-#[allow(dead_code)]
 pub enum WordT {
     In,
     Out,
