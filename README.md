@@ -1,15 +1,15 @@
-# The Node Quest Programming Language. Basic Info
+# The Flow Quest Programming Language. Basic Info
 
 ## Compiler or Interpreter
 
-Node quest is a ***compiler***.
+Flow quest is a ***compiler***.
 
 ## Typing
 
 It is a strongly typed language(not yet).
 
 ## Paradigm
-Node quest has its own paradigm (I don't know did somebody use it before). This paradigm is similar to OOP.
+Flow quest has its own paradigm (I don't know did somebody use it before). This paradigm is similar to OOP.
 
 ### *I called it neuron paradigm.*
 This paradigm implies that the program is a complex neural network. Each neuron in the program can have different difficulty.
@@ -50,5 +50,5 @@ Stores one object
 ### Transformers
 Functions that takes one object and returns another
 
-# Node Quest is in alpha version!!
+# Flow Quest is in alpha version!!
 ## There can be bugs and development of a lot of decribed above hasn't started yet!
