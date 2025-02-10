@@ -49,7 +49,7 @@ pub enum ModulePiece {
     Condition,
 }
 pub fn read_file_contents(filename: &str) -> io::Result<String> {
-    let mut file = File::open(String::from("code/") + filename + ".nq")?;
+    let mut file = File::open(String::from("code/") + filename + ".fq")?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
     Ok(contents)
