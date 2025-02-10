@@ -10,7 +10,8 @@ use crate::inout::*;
 
 #[allow(dead_code)]
 fn run_test_template_oneline(expr: String, expected_result: RefCell<Vec<VarV>>) {
-    let mut tokens: Vec<TokenV> = tokenize_code(expr.clone(),&HashMap::new());
+    let vocab = read_json("vocabulary.json".to_string());
+    let mut tokens: Vec<TokenV> = tokenize_code(expr.clone(), &vocab.keywords);
     println!("{:?}", tokens);
     let tree: Statement = Statement {
         value: parse_program(&mut tokens, &RefCell::new(FlowListener::Asserter(expected_result))),
