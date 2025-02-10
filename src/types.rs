@@ -1,8 +1,8 @@
-use core::ops::{Add, Div, Mul, Not, Sub};
+use core::ops::{Add, Div, Mul, Not, Sub, BitOr, BitAnd};
+use std::cell::RefCell;
 use std::cmp::{Eq, Ord, PartialEq, PartialOrd};
 use std::rc::Rc;
-
-use crate::intermediate_representation::IR;
+use crate::ir::IR;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Statement {
     pub value: Rc<StatementV>,
@@ -25,7 +25,6 @@ impl From<Statement> for Rc<StatementV> {
         statement.value
     }
 }
-pub type Path = Option<String>;
 #[derive(Debug, Clone, PartialEq)]
 pub enum StatementV {
     Block(Vec<Statement>, BlockV),
@@ -40,8 +39,8 @@ pub enum StatementV {
     OperationBool(ActionV, Statement, Option<Statement>),
     OperationNumder(ActionV, Statement, Statement),
     If(Statement, Statement, Option<Statement>),
-    OutExpr { expr: Statement, like: Path },
-    In(String),
+    OutExpr { expr: Statement, to: RefCell<FlowListener> },
+    In(FlowStreamer),
     Jump(bool),
 }
 #[derive(Debug, Clone, PartialEq)]
@@ -69,92 +68,110 @@ pub enum BlockV {
     Draft,
 }
 #[derive(Debug, Clone)]
-pub enum VarT {
-    Tuple(Vec<VarT>),
+pub enum VarV {
+    Tuple(Vec<VarV>),
     Procedure(Vec<IR>),
     Num(isize),
     Bool(bool),
 }
-impl VarT {
+impl VarV {
     pub fn get_code(&self) -> Vec<IR> {
         match self {
-            VarT::Procedure(code) => code.clone(),
+            VarV::Procedure(code) => code.clone(),
             _ => panic!("Type mismatch: not a procedure"),
         }
     }
 }
-impl Eq for VarT {}
-impl PartialEq for VarT {
+impl Eq for VarV {}
+impl PartialEq for VarV {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (VarT::Num(a), VarT::Num(b)) => a == b,
-            (VarT::Bool(a), VarT::Bool(b)) => a == b,
-            (VarT::Tuple(t1), VarT::Tuple(t2)) => t1 == t2,
+            (VarV::Num(a), VarV::Num(b)) => a == b,
+            (VarV::Bool(a), VarV::Bool(b)) => a == b,
+            (VarV::Tuple(t1), VarV::Tuple(t2)) => t1 == t2,
             _ => false,
         }
     }
 }
-impl Ord for VarT {
+impl Ord for VarV {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
-            (VarT::Num(a), VarT::Num(b)) => a.cmp(b),
+            (VarV::Num(a), VarV::Num(b)) => a.cmp(b),
             _ => panic!("Type mismatch"),
         }
     }
 }
-impl PartialOrd for VarT {
+impl PartialOrd for VarV {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match (self, other) {
-            (VarT::Num(a), VarT::Num(b)) => a.partial_cmp(b),
+            (VarV::Num(a), VarV::Num(b)) => a.partial_cmp(b),
             _ => None,
         }
     }
 }
-impl Not for VarT {
+impl Not for VarV {
     type Output = Self;
     fn not(self) -> Self {
         match self {
-            VarT::Bool(b) => VarT::Bool(!b),
-            VarT::Num(v) => VarT::Num(-v),
-            VarT::Tuple(_) => todo!(),
-            VarT::Procedure(_) => todo!(),
+            VarV::Bool(b) => VarV::Bool(!b),
+            VarV::Num(v) => VarV::Num(-v),
+            VarV::Tuple(_) => todo!(),
+            VarV::Procedure(_) => todo!(),
         }
     }
 }
-impl Add for VarT {
+impl Add for VarV {
     type Output = Self;
     fn add(self, other: Self) -> Self {
         match (self, other) {
-            (VarT::Num(a), VarT::Num(b)) => VarT::Num(a + b),
-            (VarT::Bool(a), VarT::Bool(b)) => VarT::Bool(a || b),
+            (VarV::Num(a), VarV::Num(b)) => VarV::Num(a + b),
+            (VarV::Bool(a), VarV::Bool(b)) => VarV::Bool(a || b),
             _ => panic!("Type mismatch"),
         }
     }
 }
-impl Sub for VarT {
+impl Sub for VarV {
     type Output = Self;
     fn sub(self, other: Self) -> Self {
         match (self, other) {
-            (VarT::Num(a), VarT::Num(b)) => VarT::Num(a - b),
+            (VarV::Num(a), VarV::Num(b)) => VarV::Num(a - b),
             _ => panic!("Type mismatch"),
         }
     }
 }
-impl Mul for VarT {
+impl Mul for VarV {
     type Output = Self;
     fn mul(self, other: Self) -> Self {
         match (self, other) {
-            (VarT::Num(a), VarT::Num(b)) => VarT::Num(a * b),
-            (VarT::Bool(a), VarT::Bool(b)) => VarT::Bool(a && b),
+            (VarV::Num(a), VarV::Num(b)) => VarV::Num(a * b),
+            (VarV::Bool(a), VarV::Bool(b)) => VarV::Bool(a && b),
             _ => panic!("Type mismatch"),
         }
     }
 }
-impl Div for VarT {
+impl Div for VarV {
     type Output = Self;
     fn div(self, other: Self) -> Self {
         match (self, other) {
-            (VarT::Num(a), VarT::Num(b)) => VarT::Num(a / b),
+            (VarV::Num(a), VarV::Num(b)) => VarV::Num(a / b),
+            _ => panic!("Type mismatch"),
+        }
+    }
+}
+impl BitOr for VarV {
+    type Output = Self;
+    fn bitor(self, other: Self) -> Self {
+        match (self, other) {
+            (VarV::Bool(a), VarV::Bool(b)) => VarV::Bool(a || b),
+            _ => panic!("Type mismatch"),
+        }
+    }
+}
+impl BitAnd for VarV {
+    type Output = Self;
+    fn bitand(self, other: Self) -> Self {
+        match (self, other) {
+            (VarV::Bool(a), VarV::Bool(b)) => VarV::Bool(a && b),
             _ => panic!("Type mismatch"),
         }
     }
@@ -167,7 +184,6 @@ pub enum TokenV {
     Number(isize),
     Name(String),
     Mark(u8),
-    Keyword(WordT),
     Comparsion(u8),
     Dot(bool),
     EOF,
@@ -177,7 +193,6 @@ impl TokenV {
         match &self {
             TokenV::Number(v) => *v,
             TokenV::Name(_) => panic!("trying to get name"),
-            TokenV::Keyword(_) => panic!("trying to get keyword"),
             _ => panic!("Unexpected token while trying to get int value"),
         }
     }
@@ -196,12 +211,12 @@ impl TokenV {
     }
     pub fn get_operation_priorety(&self) -> u8 {
         match &self {
-            TokenV::Comparsion(_) => 1,
+            TokenV::Comparsion(_) => 4,
             TokenV::Sign(1..=2) => 5,
             TokenV::Sign(3..=4) => 6,
             TokenV::Mark(7) => 2,
-            TokenV::Mark(9) => 3,
-            TokenV::Mark(1) => 4,
+            TokenV::Mark(9) => 1,
+            TokenV::Mark(1) => 3,
             _ => 0,
         }
     }
@@ -232,11 +247,46 @@ impl TokenV {
         }
     }
 }
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum WordT {
-    In,
-    Out,
-    Go,
-    Stop,
-    Again,
+pub enum FlowListener{
+    Console,
+    Asserter(RefCell<Vec<VarV>>),
+    None
+}
+impl FlowListener {
+    pub fn get(&self,val: VarV) -> bool {
+        match self {
+            FlowListener::Console => {
+                match val {
+                    VarV::Num(val) => println!("{}",val),
+                    VarV::Bool(val) => println!("{}",val),
+                    VarV::Tuple(vec) => println!("{:?}",vec),
+                    VarV::Procedure(_) => println!("Procedure"),                 
+                }
+                true
+            }
+            FlowListener::Asserter(expected_values) => {
+                expected_values.borrow_mut().remove(0) == val 
+            }
+            FlowListener::None => true,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum FlowStreamer{
+    Console,
+    None
+}
+impl FlowStreamer {
+    pub fn send(&self) -> VarV{
+        match self {
+            FlowStreamer::Console => {
+                let mut input = String::new();
+                std::io::stdin().read_line(&mut input).unwrap();
+                VarV::Num(input.parse().unwrap())
+            }
+            FlowStreamer::None => VarV::Num(0),
+        }
+    }
 }

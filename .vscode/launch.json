@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'brace_chain'",
+            "name": "Debug executable 'node_quest'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=brace_chain",
-                    "--package=brace_chain"
+                    "--bin=node_quest",
+                    "--package=node_quest"
                 ],
                 "filter": {
-                    "name": "brace_chain",
+                    "name": "node_quest",
                     "kind": "bin"
                 }
             },
@@ -25,16 +25,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'brace_chain'",
+            "name": "Debug unit tests in executable 'node_quest'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=brace_chain",
-                    "--package=brace_chain"
+                    "--bin=node_quest",
+                    "--package=node_quest"
                 ],
                 "filter": {
-                    "name": "brace_chain",
+                    "name": "node_quest",
                     "kind": "bin"
                 }
             },

@@ -1,27 +1,26 @@
-use crate::types::{TokenV, WordT};
+use std::collections::HashMap;
 
-pub fn tokenize_code(eq: String) -> Vec<TokenV> {
+use crate::types::TokenV;
+
+pub fn tokenize_code(eq: String, keywords: &HashMap<String,u8>) -> Vec<TokenV> {
     let mut chars: Vec<char> = eq.chars().rev().collect();
     let mut tokens: Vec<TokenV> = Vec::new();
     while chars.len() > 0 {
         match chars.last().unwrap() {
             '\n' | '\r' | '\t' | ' ' => {chars.pop().unwrap();},
-            
-            '(' | ')' | '[' | ']' | '{' | '}' => tokens.push(tokenize_brace(&mut chars)),
 
-            val if val.is_ascii_punctuation() => tokens.push(tokenize_symbol(&mut chars)),
+            val if val.is_ascii_punctuation() => tokens.append(&mut tokenize_symbol(&mut chars)),
 
             '0'..='9' => tokens.push(tokenize_number(&mut chars)),
 
-            '_' | 'A'..='Z' | 'a'..='z' => tokens.push(tokenize_name(&mut chars)),
-
+            '_' | 'A'..='Z' | 'a'..='z' => tokens.push(tokenize_name(&mut chars,keywords)),
             _ => println!("symbol not recognized: {}", chars.last().unwrap()),
         }
     }
     tokens.push(TokenV::EOF);
     tokens
 }
-fn tokenize_name(chars: &mut Vec<char>) -> TokenV {
+fn tokenize_name(chars: &mut Vec<char>,keywords: &HashMap<String,u8>) -> TokenV {
     let mut name: String = String::new();
     loop {
         if chars.len() > 0 {
@@ -34,14 +33,11 @@ fn tokenize_name(chars: &mut Vec<char>) -> TokenV {
         let i = chars.pop().unwrap();
         name.push(i);
     }
-    match name.to_lowercase().as_str() {
-        "in" => TokenV::Keyword(WordT::In),
-        "out" => TokenV::Keyword(WordT::Out),
-        "do" => TokenV::Keyword(WordT::Go),
-        "stop" => TokenV::Keyword(WordT::Stop),
-        "again" => TokenV::Keyword(WordT::Again),
-        _ => TokenV::Name(name),
+    match keywords.get(name.as_str()) {
+        Some(val) => TokenV::Mark(*val),
+        None => TokenV::Name(name),
     }
+
 }
 fn tokenize_number(chars: &mut Vec<char>) -> TokenV {
     let mut number: String = String::new();
@@ -61,18 +57,35 @@ fn tokenize_number(chars: &mut Vec<char>) -> TokenV {
     }
     TokenV::Number(number.parse().unwrap())
 }
-#[allow(dead_code)]
-fn tokenize_symbol(chars: &mut Vec<char>) -> TokenV {
+fn tokenize_symbol(chars: &mut Vec<char>,) -> Vec<TokenV> {
+    let mut tokens: Vec<TokenV> = Vec::new();
     let mut symbol_sequence:String = String::new();
     while chars.len() > 0 {
-        if !chars.last().unwrap().is_ascii_punctuation() 
+        if !chars.last().unwrap().is_ascii_punctuation()
         {
             break;
         }
         let i = chars.pop().unwrap();
+        if let ',' | '.' = i {
+            tokens.push(TokenV::Dot(i == ','));
+            if symbol_sequence.len() == 0 {
+                return tokens;
+            }
+            break;
+        }
         symbol_sequence.push(i);
     }
-    match symbol_sequence.as_str() {
+    tokens.insert(0,match symbol_sequence.as_str() {
+
+        "(" => TokenV::Brackets {id: 1,  is_opened: true},
+        ")" => TokenV::Brackets {id: 1, is_opened: false},
+        "[" => TokenV::Brackets {id: 2,  is_opened: true},
+        "]" => TokenV::Brackets {id: 2, is_opened: false},
+        "{" => TokenV::Brackets {id: 3,  is_opened: true},
+        "}" => TokenV::Brackets {id: 3, is_opened: false},
+        "<" => TokenV::Brackets { id: 4, is_opened: true },
+        ">" => TokenV::Brackets { id: 4, is_opened: false },
+
         "!!" => TokenV::Bool(false),
         "==" => TokenV::Bool(true),
 
@@ -95,15 +108,17 @@ fn tokenize_symbol(chars: &mut Vec<char>) -> TokenV {
         "=>" => TokenV::Mark(15),
         "->" => TokenV::Mark(16),
 
+        "|+" => TokenV::Mark(17),
+        "|-" => TokenV::Mark(18),
+        "~+" => TokenV::Mark(19),
+        "~-" => TokenV::Mark(20),
+
         "=" => TokenV::Comparsion(1),
-        ">" => TokenV::Comparsion(2),
-        "<" => TokenV::Comparsion(3),
+        ">>" => TokenV::Comparsion(2),
+        "<<" => TokenV::Comparsion(3),
         "!=" | "=!" => TokenV::Comparsion(4),
         ">=" => TokenV::Comparsion(5),
         "<=" => TokenV::Comparsion(6),
-
-        "." => TokenV::Dot(false),
-        "," => TokenV::Dot(true),
 
         "+" => TokenV::Sign(1),
         "-" => TokenV::Sign(2),
@@ -114,18 +129,6 @@ fn tokenize_symbol(chars: &mut Vec<char>) -> TokenV {
             "unexpected symbol sequence: {}",
             symbol_sequence
         ),
-    }
-}
-
-fn tokenize_brace(chars: &mut Vec<char>) -> TokenV
-{
-    match chars.pop().unwrap() {
-        '(' => TokenV::Brackets {id: 1,  is_opened: true},
-        ')' => TokenV::Brackets {id: 1, is_opened: false},
-        '[' => TokenV::Brackets {id: 2,  is_opened: true},
-        ']' => TokenV::Brackets {id: 2, is_opened: false},
-        '{' => TokenV::Brackets {id: 3,  is_opened: true},
-        '}' => TokenV::Brackets {id: 3, is_opened: false},
-        _ => panic!("unexpected brace: {}", chars.last().unwrap()),
-    }
+    });
+    tokens
 }

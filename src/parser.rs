@@ -1,20 +1,17 @@
 use crate::types::Statement;
-use crate::types::TokenV;
-use crate::types::WordT;
-use crate::types::{ActionV, BlockV, StatementV};
+use crate::types::{ActionV, BlockV, StatementV, TokenV};
+use crate::types::{FlowListener, FlowStreamer};
 use core::panic;
+use std::cell::RefCell;
 use std::rc::Rc;
 
-// pub fn shift<T>(vec: &mut Vec<T>) -> T {
-//     if vec.len() == 0 {
-//         panic!("trying to shift from vec with zero len")
-//     }
-//     vec.remove(0)
-// }
-fn get_data_from_chain(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
+fn get_data_from_chain(
+    tokens: &mut Vec<TokenV>,
+    listener: &RefCell<FlowListener>,
+) -> Rc<StatementV> {
     if *tokens.last().unwrap() == TokenV::Mark(14) {
         tokens.pop().unwrap();
-        return parse_expression(tokens, 1);
+        return parse_expression(tokens, 1, listener);
     } else {
         panic!(
             "expected -- while getting data from chain; found: {:?}",
@@ -22,10 +19,10 @@ fn get_data_from_chain(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
         )
     }
 }
-pub fn parse_program(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
+pub fn parse_program(tokens: &mut Vec<TokenV>, listener: &RefCell<FlowListener>) -> Rc<StatementV> {
     tokens.reverse();
     Rc::new(StatementV::Block(
-        get_statements_of_block(parse_block(tokens, TokenV::EOF)),
+        get_statements_of_block(parse_block(tokens, TokenV::EOF, listener)),
         BlockV::Evaluate,
     ))
 }
@@ -35,10 +32,14 @@ fn get_statements_of_block(expr: Rc<StatementV>) -> Vec<Statement> {
         v => vec![Statement::new(Rc::new(v.clone()))],
     }
 }
-pub fn parse_block(tokens: &mut Vec<TokenV>, closing_brace: TokenV) -> Rc<StatementV> {
+pub fn parse_block(
+    tokens: &mut Vec<TokenV>,
+    closing_brace: TokenV,
+    listener: &RefCell<FlowListener>,
+) -> Rc<StatementV> {
     let mut clmn: TokenV;
     let mut stmts: Vec<Statement> = vec![];
-    stmts.push(parse_statement(tokens).into());
+    stmts.push(parse_statement(tokens, listener).into());
     if tokens.len() > 2 {
         clmn = tokens.pop().unwrap();
         if let TokenV::Dot(true) = clmn {
@@ -70,7 +71,6 @@ pub fn parse_block(tokens: &mut Vec<TokenV>, closing_brace: TokenV) -> Rc<Statem
     }
     while let TokenV::Dot(true) = clmn {
         if let TokenV::Dot(false) = tokens.last().unwrap() {
-            println!("shifted dot");
             tokens.pop().unwrap();
             if closing_brace == *tokens.last().unwrap() {
                 tokens.pop().unwrap();
@@ -83,7 +83,7 @@ pub fn parse_block(tokens: &mut Vec<TokenV>, closing_brace: TokenV) -> Rc<Statem
                 );
             }
         }
-        let stmt = parse_statement(tokens);
+        let stmt = parse_statement(tokens, listener);
         stmts.push(stmt.into());
         if let TokenV::Dot(true) = tokens.last().unwrap() {
             clmn = tokens.pop().unwrap();
@@ -91,101 +91,77 @@ pub fn parse_block(tokens: &mut Vec<TokenV>, closing_brace: TokenV) -> Rc<Statem
     }
     Rc::new(StatementV::Block(stmts, BlockV::Draft))
 }
-fn parse_statement(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
-    match tokens.last().unwrap().clone() {
+fn parse_statement(tokens: &mut Vec<TokenV>, listener: &RefCell<FlowListener>) -> Rc<StatementV> {
+    match tokens.pop().unwrap().clone() {
         TokenV::Mark(id) => match id {
-            8 => {
-                tokens.pop().unwrap();
-                parse_if_statement(tokens)
-            }
+            8 => parse_if_statement(tokens, listener),
             3 => {
-                tokens.pop().unwrap();
                 let name = tokens.pop().unwrap().get_string_from_name();
-                let value: Statement = get_data_from_chain(tokens).into();
+                let value: Statement = get_data_from_chain(tokens, listener).into();
                 Rc::new(StatementV::Set { name, value })
             }
             4 => {
-                tokens.pop().unwrap();
-                let link = parse_expression(tokens, 1).into();
+                let link = parse_expression(tokens, 1, listener).into();
                 Rc::new(StatementV::Define {
                     link,
-                    like: match get_data_from_chain(tokens).as_ref() {
+                    like: match get_data_from_chain(tokens, listener).as_ref() {
                         StatementV::Name(path) => path.clone(),
                         _ => panic!("expected name in defining;"),
                     },
                 })
             }
             5 => {
-                tokens.pop().unwrap();
                 let name = tokens.pop().unwrap().get_string_from_name();
-                let value = get_data_from_chain(tokens);
+                let value = get_data_from_chain(tokens, listener);
                 Rc::new(StatementV::Assign(name, value.into()))
             }
-            _ => parse_expression(tokens, 1),
+            16 => {
+                let repeat = match tokens.pop().unwrap() {
+                    TokenV::Mark(17) => true,
+                    TokenV::Mark(18) => false,
+                    _ => panic!("expected again or stop"),
+                };
+                Rc::new(StatementV::Jump(repeat))
+            }
+            19 => Rc::new(StatementV::In(FlowStreamer::None)),
+            20 => {
+                let to_out: Rc<StatementV> = parse_statement(tokens, listener);
+                Rc::new(StatementV::OutExpr {
+                    expr: to_out.into(),
+                    to: listener.clone(),
+                })
+            }
+            val => {
+                tokens.push(TokenV::Mark(val));
+                parse_expression(tokens, 1, listener)
+            }
         },
-        TokenV::Keyword(type_) => {
-            tokens.pop().unwrap();
-            parse_keyword_statement(tokens, type_.clone())
+        val => {
+            tokens.push(val);
+            parse_expression(tokens, 1, listener)
         }
-        _ => parse_expression(tokens, 1),
     }
 }
-fn parse_if_statement(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
-    let condition: Statement = parse_statement(tokens).into();
-    let if_: Statement = parse_statement(tokens).into();
+fn parse_if_statement(
+    tokens: &mut Vec<TokenV>,
+    listener: &RefCell<FlowListener>,
+) -> Rc<StatementV> {
+    let condition: Statement = parse_statement(tokens, listener).into();
+    let if_: Statement = parse_statement(tokens, listener).into();
     if let TokenV::Mark(12) = tokens.last().unwrap() {
-        tokens.remove(0);
-        let else_: Statement = parse_statement(tokens).into();
+        tokens.pop();
+        let else_: Statement = parse_statement(tokens, listener).into();
         Rc::new(StatementV::If(condition, if_, Some(else_)))
     } else {
         Rc::new(StatementV::If(condition, if_, None))
     }
 }
-fn parse_keyword_statement(tokens: &mut Vec<TokenV>, keyword: WordT) -> Rc<StatementV> {
-    match keyword {
-        WordT::In => {
-            if tokens.len() > 0 {
-                if let TokenV::Mark(14) = tokens.last().unwrap() {
-                    tokens.pop().unwrap();
-                    if let TokenV::Name(..) = tokens.last().unwrap() {
-                        let tk = tokens.pop().unwrap();
-                        return Rc::new(StatementV::In(String::from(tk.get_string_from_name())));
-                    }
-                }
-            }
-            Rc::new(StatementV::In(String::from("-1")))
-        }
-        WordT::Out => {
-            let to_out: Rc<StatementV> = parse_statement(tokens);
-            if let TokenV::Mark(14) = tokens.last().unwrap() {
-                tokens.pop().unwrap();
-                let path = tokens.pop().unwrap().get_string_from_name();
-                return Rc::new(StatementV::OutExpr {
-                    expr: to_out.into(),
-                    like: Some(path),
-                });
-            };
-            Rc::new(StatementV::OutExpr {
-                expr: to_out.into(),
-                like: None,
-            })
-        }
-        WordT::Go => {
-            let repeat: bool = match tokens.pop().unwrap() {
-                TokenV::Keyword(WordT::Again) => true,
-                TokenV::Keyword(WordT::Stop) => false,
-                _ => panic!("expected again or stop"),
-            };
-            Rc::new(StatementV::Jump(repeat))
-        }
-        _ => panic!(
-            "again and stop can be used with do only; current keyword: {:?}",
-            keyword
-        ),
-    }
-}
-fn parse_expression(tokens: &mut Vec<TokenV>, min_priority: u8) -> Rc<StatementV> {
-    let mut left_expr: Statement = parse_primary(tokens).into();
+fn parse_expression(
+    tokens: &mut Vec<TokenV>,
+    min_priority: u8,
+    listener: &RefCell<FlowListener>,
+) -> Rc<StatementV> {
+    let mut left_expr: Statement = parse_primary(tokens, listener).into();
     loop {
         let op: TokenV = tokens.last().unwrap().clone();
         let priority = op.get_operation_priorety();
@@ -193,7 +169,7 @@ fn parse_expression(tokens: &mut Vec<TokenV>, min_priority: u8) -> Rc<StatementV
             break;
         }
         tokens.pop().unwrap();
-        let right_expr: Statement = parse_expression(tokens, priority + 1).into();
+        let right_expr: Statement = parse_expression(tokens, priority + 1, listener).into();
         left_expr = match &op {
             TokenV::Sign(_) => Rc::new(StatementV::OperationNumder(
                 op.token_to_action_type(),
@@ -218,7 +194,7 @@ fn parse_expression(tokens: &mut Vec<TokenV>, min_priority: u8) -> Rc<StatementV
     }
     left_expr.value
 }
-fn parse_primary(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
+fn parse_primary(tokens: &mut Vec<TokenV>, listener: &RefCell<FlowListener>) -> Rc<StatementV> {
     if tokens.is_empty() {
         panic!("Invalid expression in primary");
     }
@@ -228,7 +204,7 @@ fn parse_primary(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
             if is_opened {
                 match id {
                     1 => {
-                        let expr: Rc<StatementV> = parse_statement(tokens);
+                        let expr: Rc<StatementV> = parse_statement(tokens, listener);
                         if let TokenV::Brackets {
                             id: 1,
                             is_opened: false,
@@ -247,11 +223,24 @@ fn parse_primary(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
                                 id: 3,
                                 is_opened: false,
                             },
+                            listener,
                         );
                         Rc::new(StatementV::Block(
                             get_statements_of_block(expr),
                             BlockV::Evaluate,
                         ))
+                    }
+                    4 => {
+                        let expr: Rc<StatementV> = parse_expression(tokens, 1, listener);
+                        if let TokenV::Brackets {
+                            id: 4,
+                            is_opened: false,
+                        } = tokens.pop().unwrap()
+                        {
+                        } else {
+                            panic!("Mismatched > paren");
+                        }
+                        expr
                     }
                     _ => panic!("unexpected brace id"),
                 }
@@ -259,12 +248,8 @@ fn parse_primary(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
                 panic!("closing paren found while no opening was: {:?}", tk)
             }
         }
-        TokenV::Comparsion(3) => {
-            let expr: Rc<StatementV> = parse_block(tokens, TokenV::Comparsion(2));
-            expr
-        }
-        TokenV::Mark(1) => {
-            let expr: Statement = parse_expression(tokens, 5).into();
+        TokenV::Mark(1) | TokenV::Sign(2) => {
+            let expr: Statement = parse_expression(tokens, 5, listener).into();
             Rc::new(StatementV::OperationBool(ActionV::Not, expr, None))
         }
         TokenV::Number(val) => Rc::new(StatementV::Number(val)),
@@ -274,6 +259,10 @@ fn parse_primary(tokens: &mut Vec<TokenV>) -> Rc<StatementV> {
             tokens.insert(0, TokenV::EOF);
             Rc::new(StatementV::Nil)
         }
-        _ => panic!("Unexpected token:  {:?}; tokens: {:?}", tk, tokens),
+        _ => panic!(
+            "Unexpected token:  {:?}; tokens: {:?}",
+            tk,
+            tokens.iter().rev().collect::<Vec<&TokenV>>()
+        ),
     }
 }

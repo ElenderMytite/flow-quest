@@ -1,16 +1,64 @@
-use crate::types::{Path, Statement, StatementV};
+use crate::types::{Statement, StatementV};
+use serde::{Deserialize, Serialize};
 use std::{
     borrow::Borrow,
+    collections::HashMap,
     fs::File,
     io::{self, stdin, Read},
 };
+#[derive(Debug)]
+pub struct Vocabulary {
+    pub keywords: HashMap<String, u8>,
+    #[allow(dead_code)]
+    pub libwords: HashMap<String, ModulePiece>,
+}
+#[derive(Debug, Serialize, Deserialize)]
+struct VocabularyBuilder {
+    keywords: HashMap<String, u8>,
+    libwords: HashMap<String, ModulePiece>,
+    parent: Option<String>,
+}
+impl From<VocabularyBuilder> for Vocabulary {
+    fn from(vb: VocabularyBuilder) -> Self {
+        match vb.parent {
+            None => Vocabulary {
+                keywords: vb.keywords,
+                libwords: vb.libwords,
+            },
+            Some(p) => {
+                let parent = read_json(p + ".json");
+                let mut keywords = parent.keywords;
+                let mut libwords = parent.libwords;
+                for (k, v) in vb.keywords {
+                    keywords.insert(k, v);
+                }
+                for (k, v) in vb.libwords {
+                    libwords.insert(k, v);
+                }
+                println!("{:#?}", keywords);
+                Vocabulary { keywords, libwords }
+            }
+        }
+    }
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ModulePiece {
+    TransFormer,
+    Streamer,
+    Listener,
+    Condition,
+}
 pub fn read_file_contents(filename: &str) -> io::Result<String> {
     let mut file = File::open(String::from("code/") + filename + ".nq")?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
     Ok(contents)
 }
-
+pub fn read_json(path: String) -> Vocabulary {
+    let file = File::open(path).expect("cannot open file");
+    let builder: VocabularyBuilder = serde_json::from_reader(file).expect("cannot read json");
+    Vocabulary::from(builder)
+}
 pub fn get_way_to_run() -> String {
     let mut option: String = String::from("");
     let mut code: String = String::from("");
@@ -36,7 +84,6 @@ pub fn get_way_to_run() -> String {
         }
     }
 }
-
 pub fn ask_to_do_smth(text: &str) -> bool {
     let mut option: String = String::from("");
     println!("choose option: y: {text} n: do not {text} ");
@@ -90,26 +137,24 @@ pub fn print_tree(node: Statement, depth: usize) {
                 print_tree(stmt.clone(), depth + 1);
             }
         }
-        StatementV::OutExpr { expr, like } => {
+        StatementV::OutExpr { expr, to } => {
             println!("{}Return:", indent);
             print_tree(expr.clone(), depth + 1);
-            println!("{}As:", indent);
-            print_module_path(like.clone(), depth + 1);
+            println!("{}To: {:?}", indent, *to);
         }
-        StatementV::In(name) => {
-            println!("{}Get: {}", indent, name);
+        StatementV::In(streamer) => {
+            println!("{}Get from: {:?}", indent, *streamer);
         }
         StatementV::Name(name) => println!("{}Name: {:?}", indent, name),
         StatementV::Define { link, like } => {
             println!("{}Define:", indent);
             print_tree(link.clone(), depth + 1);
-            println!("{}As:", indent);
-            print_module_path(Some(like.clone()), depth + 1);
+            println!("{}As: {}", indent, like);
         }
         StatementV::Assign(module_path, rc) => {
             println!("{}Assign:", indent);
-            print_module_path(Some(module_path.clone()), depth + 1);
             print_tree(rc.clone(), depth + 1);
+            println!("{}To: {}", indent, module_path);
         }
         StatementV::Jump(up) => {
             let place = if *up {
@@ -120,13 +165,8 @@ pub fn print_tree(node: Statement, depth: usize) {
             println!("{}Jump: {}", indent, place);
         }
         StatementV::Set { name, value } => {
-            println!("{}Set:", indent);
-            print_module_path(Some(name.clone()), depth + 1);
+            println!("{}Set to {}:", indent, name);
             print_tree(value.clone(), depth + 1);
         }
     }
-}
-fn print_module_path(path: Path, depth: usize) {
-    let indent = "\t".repeat(depth);
-    println!("{}{:?}", indent, path)
 }

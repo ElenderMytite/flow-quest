@@ -1,29 +1,29 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use crate::intermediate_representation::{ast_to_ir, execute};
+use crate::ir::{ast_to_ir, execute};
 use crate::lexer::tokenize_code;
 use crate::parser::*;
-use crate::types::Statement;
-use crate::types::{TokenV, VarT};
-use crate::{flow, inout::*};
+use crate::types::{FlowListener, Statement};
+use crate::types::{TokenV, VarV};
+use crate::inout::*;
 
 #[allow(dead_code)]
-fn run_test_template_oneline(expr: String, expected_result: RefCell<Vec<VarT>>) {
-    let mut tokens: Vec<TokenV> = tokenize_code(expr.clone());
+fn run_test_template_oneline(expr: String, expected_result: RefCell<Vec<VarV>>) {
+    let mut tokens: Vec<TokenV> = tokenize_code(expr.clone(),&HashMap::new());
     println!("{:?}", tokens);
     let tree: Statement = Statement {
-        value: parse_program(&mut tokens),
+        value: parse_program(&mut tokens, &RefCell::new(FlowListener::Asserter(expected_result))),
     };
     print_tree(tree.clone().into(), 0);
     let mut ir = vec![];
-    let listener = flow::FlowListener::Asserter(expected_result);
-    ast_to_ir(tree, &mut ir, &RefCell::new(listener));
+    ast_to_ir(tree, &mut ir);
+    println!("{:?}", ir.iter().enumerate().collect::<Vec<_>>());
     let mut env = HashMap::new();
     execute(ir, &mut env);
 }
 #[allow(dead_code)]
-fn run_test_template_file(name: &str, result: RefCell<Vec<VarT>>) {
+fn run_test_template_file(name: &str, result: RefCell<Vec<VarV>>) {
     let code = read_file_contents(name).expect("cant read file while testing:");
     run_test_template_oneline(code, result);
 }
@@ -32,22 +32,34 @@ fn test_fib() {
     run_test_template_file(
         "fib",
         RefCell::new(vec![
-            VarT::Num(0),
-            VarT::Num(1),
-            VarT::Num(1),
-            VarT::Num(2),
-            VarT::Num(3),
-            VarT::Num(5),
-            VarT::Num(8),
-            VarT::Num(13),
+            VarV::Num(1),
+            VarV::Num(1),
+            VarV::Num(2),
+            VarV::Num(3),
+            VarV::Num(5),
+            VarV::Num(8),
+            VarV::Num(13),
+            VarV::Num(21),
         ]),
     )
 }
 #[test]
 fn test_math() {
-    run_test_template_file("math", RefCell::new(vec![VarT::Num(128)]));
+    run_test_template_file("math", 
+    RefCell::new(vec![VarV::Num(128)])
+    );
 }
 #[test]
 fn test_if() {
-    run_test_template_file("if", RefCell::new(vec![VarT::Bool(true)]));
+    run_test_template_file("if", 
+    RefCell::new(vec![VarV::Bool(true)])
+    );
 }
+
+#[test]
+fn test_operation_order() {
+    run_test_template_file("order", 
+    RefCell::new(vec![VarV::Num(345)])
+    );
+}
+
