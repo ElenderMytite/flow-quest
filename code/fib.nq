@@ -8,5 +8,5 @@
     # out -- cur,
     # cur -- out + res,
     ~- out,
-    -> |+.
+    -> again.
 }.
