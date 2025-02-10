@@ -1,5 +1,5 @@
-use crate::flow::{FlowListener, FlowStreamer};
-use crate::types::{ActionV, BlockV, ComparsionV, Statement, StatementV, VarT};
+use crate::types::{ActionV, BlockV, ComparsionV, Statement, StatementV, VarV};
+use crate::types::{FlowListener, FlowStreamer};
 use std::cell::RefCell;
 #[derive(Debug, Clone)]
 #[allow(unused_variables, dead_code)]
@@ -14,12 +14,17 @@ pub enum IR {
     Num(isize),
     Bool(bool),
     Code(Vec<IR>),
+
     Nil,
+
     Add,
     Sub,
     Mul,
     Div,
+
     Not,
+    Or,
+    And,
 
     Eql,
     NEql,
@@ -31,7 +36,8 @@ pub enum IR {
     Store(String),
     Load(String),
 
-    Jump(bool),
+    Jump(usize),
+
     Define(String, Vec<IR>),
     Exe(String),
     Efine(Vec<IR>),
@@ -41,38 +47,34 @@ pub enum IR {
 
     Case(Vec<MatchPattern>, usize),
 }
-#[allow(dead_code, unused_variables)]
-pub fn assembly(code: Vec<IR>) -> String {
-    todo!()
-}
-pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>, listener: &RefCell<FlowListener>) {
+pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
     match ast_node.get_ast() {
         StatementV::Block(vec, block_type) => match block_type {
             BlockV::Evaluate => {
                 let mut ir_block: Vec<IR> = Vec::new();
                 for node in vec {
-                    ast_to_ir(node, &mut ir_block, listener);
+                    ast_to_ir(node, &mut ir_block);
                 }
                 ir.push(IR::Efine(ir_block));
             }
             BlockV::Draft => {
                 let mut ir_block: Vec<IR> = Vec::new();
                 for node in vec {
-                    ast_to_ir(node, &mut ir_block, listener);
+                    ast_to_ir(node, &mut ir_block);
                 }
                 ir.push(IR::Code(ir_block));
             }
         },
         StatementV::Define { link, like } => {
-            ast_to_ir(link, ir, listener);
+            ast_to_ir(link, ir);
             ir.push(IR::Store(like));
         }
         StatementV::Assign(module_path, statement) => {
-            ast_to_ir(statement, ir, listener);
+            ast_to_ir(statement, ir);
             ir.push(IR::Store(module_path));
         }
         StatementV::Set { name, value } => {
-            ast_to_ir(value, ir, listener);
+            ast_to_ir(value, ir);
             ir.push(IR::Store(name));
         }
         StatementV::Nil => ir.push(IR::Nil),
@@ -82,8 +84,8 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>, listener: &RefCell<FlowL
         StatementV::Bool(v) => ir.push(IR::Bool(v)),
         StatementV::Number(v) => ir.push(IR::Num(v)),
         StatementV::Comparsion(comparsion_type, statement, statement1) => {
-            ast_to_ir(statement, ir, listener);
-            ast_to_ir(statement1, ir, listener);
+            ast_to_ir(statement, ir);
+            ast_to_ir(statement1, ir);
             ir.push(match comparsion_type {
                 ComparsionV::Equal => IR::Eql,
                 ComparsionV::NotEqual => IR::NEql,
@@ -94,20 +96,20 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>, listener: &RefCell<FlowL
             });
         }
         StatementV::OperationBool(action_type, statement, statement1) => {
-            ast_to_ir(statement, ir, listener);
+            ast_to_ir(statement, ir);
             if let Some(statement1) = statement1 {
-                ast_to_ir(statement1, ir, listener);
+                ast_to_ir(statement1, ir);
             }
             ir.push(match action_type {
                 ActionV::Not => IR::Not,
-                ActionV::And => IR::Add,
-                ActionV::Or => IR::Mul,
+                ActionV::And => IR::And,
+                ActionV::Or => IR::Or,
                 _ => todo!(),
             });
         }
         StatementV::OperationNumder(action_type, statement, statement1) => {
-            ast_to_ir(statement, ir, listener);
-            ast_to_ir(statement1, ir, listener);
+            ast_to_ir(statement, ir);
+            ast_to_ir(statement1, ir);
             ir.push(match action_type {
                 ActionV::Plus => IR::Add,
                 ActionV::Minus => IR::Sub,
@@ -117,113 +119,74 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>, listener: &RefCell<FlowL
             });
         }
         StatementV::If(statement, statement1, statement2) => {
-            ast_to_ir(statement, ir, listener);
+            ast_to_ir(statement, ir);
             ir.push(IR::Case(
                 vec![MatchPattern::Val(vec![IR::Bool(true)])],
-                ir.len() + 2,
+                ir.len() + 2 + if statement2.is_some() { 1 } else { 0 },
             ));
-            ast_to_ir(statement1, ir, listener);
+            ast_to_ir(statement1, ir);
             if let Some(statement2) = statement2 {
-                ast_to_ir(statement2, ir, listener);
+                ir.push(IR::Jump(ir.len() + 2));
+                ast_to_ir(statement2, ir);
             }
         }
-        StatementV::OutExpr { expr, like: _ } => {
-            ast_to_ir(expr, ir, listener);
-            ir.push(IR::Output(RefCell::new(FlowListener::Console)));
+        StatementV::OutExpr { expr, to } => {
+            ast_to_ir(expr, ir);
+            ir.push(IR::Output(to));
         }
         StatementV::In(_) => ir.push(IR::Input(RefCell::new(FlowStreamer::Console))),
-        StatementV::Jump(t) => ir.push(IR::Jump(t)),
+        StatementV::Jump(t) => ir.push(IR::Jump(if t { 0 } else { usize::MAX })),
     }
 }
 use std::collections::HashMap;
-#[allow(dead_code)]
-pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarT>) -> Vec<VarT> {
-    let mut stack: Vec<VarT> = Vec::new();
-    heap.insert(String::from("s-main"), VarT::Procedure(ir.clone()));
+
+pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarV>) -> Vec<VarV> {
+    let mut stack: Vec<VarV> = Vec::new();
     let mut index = 0;
     while ir.len() > index {
         let instruction = ir.get(index).unwrap();
         match instruction {
             IR::Nil => (),
-            IR::Num(n) => stack.push(VarT::Num(*n)),
-            IR::Bool(b) => stack.push(VarT::Bool(*b)),
+            IR::Num(n) => stack.push(VarV::Num(*n)),
+            IR::Bool(b) => stack.push(VarV::Bool(*b)),
             IR::Code(c) => {
-                stack.push(VarT::Procedure(c.clone()));
+                stack.push(VarV::Procedure(c.clone()));
             }
-            IR::Add => {
-                let a = stack.pop().unwrap();
-                let b = stack.pop().unwrap();
-                stack.push(b + a);
-            }
-            IR::Sub => {
-                let a = stack.pop().unwrap();
-                let b = stack.pop().unwrap();
-                stack.push(b - a);
-            }
-            IR::Mul => {
-                let a = stack.pop().unwrap();
-                let b = stack.pop().unwrap();
-                stack.push(b * a);
-            }
-            IR::Div => {
-                let b = stack.pop().unwrap();
-                let a = stack.pop().unwrap();
-                stack.push(b / a);
-            }
-            IR::Not => {
-                let a = stack.pop().unwrap();
-                stack.push(!a);
-            }
-            IR::Eql => {
-                let a = stack.pop().unwrap();
-                let b = stack.pop().unwrap();
-                stack.push(VarT::Bool(a == b));
-            }
-            IR::NEql => {
-                let a = stack.pop().unwrap();
-                let b = stack.pop().unwrap();
-                stack.push(VarT::Bool(a != b));
-            }
-            IR::Ls => {
-                let a = stack.pop().unwrap();
-                let b = stack.pop().unwrap();
-                stack.push(VarT::Bool(a > b));
-            }
-            IR::Gt => {
-                let a = stack.pop().unwrap();
-                let b = stack.pop().unwrap();
-                stack.push(VarT::Bool(a < b));
-            }
-            IR::LsEql => {
-                let a = stack.pop().unwrap();
-                let b = stack.pop().unwrap();
-                stack.push(VarT::Bool(a >= b));
-            }
+            IR::Add |
+            IR::Sub |
+            IR::Mul |
+            IR::Div |
+            IR::Or |
+            IR::And |
+            IR::Not |
+            IR::Eql |
+            IR::NEql |
+            IR::Ls |
+            IR::Gt |
+            IR::LsEql |
             IR::GtEql => {
-                let a = stack.pop().unwrap();
-                let b = stack.pop().unwrap();
-                stack.push(VarT::Bool(a <= b));
+                do_operation(&mut stack, instruction.clone());
             }
             IR::Store(name) => {
                 let value = stack.pop().unwrap();
                 heap.insert(name.clone(), value);
             }
             IR::Load(name) => {
-                println!("load: {}; heap: {:?}", name, heap);
                 stack.push(heap[name].clone());
             }
-            IR::Jump(again) => {
-                if *again {
-                    index = 0;
+            IR::Jump(jump_index) => {
+                if *jump_index > ir.len() {
+                    break;
+                } else {
+                    index = *jump_index;
                     continue;
                 }
-                break;
             }
             IR::Exe(name) => {
                 stack.append(&mut execute(heap[name].get_code(), heap));
             }
             IR::Define(name, code) => {
-                heap.insert(name.clone(), VarT::Procedure(code.clone()));
+                heap.insert(name.clone(), VarV::Procedure(code.clone()));
             }
             IR::Efine(vec) => {
                 stack.append(&mut execute(vec.clone(), heap));
@@ -234,17 +197,17 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarT>) -> Vec<VarT> {
                         "Pattern length is longer than stack length or goto index is out of range"
                     );
                 }
-                let mut matched = true;
+                let mut is_matching = true;
                 for pat in pattern {
                     match pat {
                         MatchPattern::Var(name) => {
-                            heap.insert(name.clone(), stack.last().unwrap().clone());
+                            heap.insert(name.clone(), stack.pop().unwrap());
                         }
                         MatchPattern::Val(val) => {
                             if stack.pop().unwrap()
                                 != return_vector_to_tuple(execute(val.clone(), heap))
                             {
-                                matched = false;
+                                is_matching = false;
                                 break;
                             }
                         }
@@ -253,7 +216,7 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarT>) -> Vec<VarT> {
                         }
                     }
                 }
-                if !matched {
+                if !is_matching {
                     index = *gt;
                     continue;
                 }
@@ -262,7 +225,15 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarT>) -> Vec<VarT> {
                 stack.push(ref_cell.borrow().send());
             }
             IR::Output(ref_cell) => {
-                let ok_run = ref_cell.borrow().get(stack.pop().unwrap());
+                let top = stack.pop().unwrap();
+                println!(
+                    "ref_cell: {:?} top: {:?}, stack: {:?}",
+                    ref_cell, top, stack
+                );
+
+                let ok_run = ref_cell.borrow().get(top.clone());
+
+                println!("ok_run: {:?}", ok_run);
                 assert!(ok_run);
             }
         }
@@ -270,10 +241,35 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarT>) -> Vec<VarT> {
     }
     stack
 }
-fn return_vector_to_tuple(v: Vec<VarT>) -> VarT {
+fn return_vector_to_tuple(v: Vec<VarV>) -> VarV {
     match v.len() {
-        0 => VarT::Tuple(Vec::new()),
+        0 => VarV::Tuple(Vec::new()),
         1 => v[0].clone(),
-        _ => VarT::Tuple(v),
+        _ => VarV::Tuple(v),
     }
+}
+
+fn do_operation(stack: &mut Vec<VarV>, operation: IR)
+{
+    let a = stack.pop().unwrap();
+    if let IR::Not = operation {
+        stack.push(!a);
+        return;
+    }
+    let b = stack.pop().unwrap();
+    stack.push(match operation {
+        IR::Add => b + a,
+        IR::Sub => b - a,
+        IR::Mul => b * a,
+        IR::Div => b / a,
+        IR::Or => b | a,
+        IR::And => b & a,
+        IR::Eql => VarV::Bool(a == b),
+        IR::NEql => VarV::Bool(a != b),
+        IR::Ls => VarV::Bool(b < a),
+        IR::Gt => VarV::Bool(b > a),
+        IR::LsEql => VarV::Bool(b <= a),
+        IR::GtEql => VarV::Bool(b >= a),
+        _ => panic!("Unknown binary operation: {:?}", operation),
+    });
 }
