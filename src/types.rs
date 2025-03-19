@@ -29,7 +29,7 @@ impl From<Statement> for Rc<StatementV> {
 pub enum StatementV {
     Block(Vec<Statement>, BlockV),
     Define { link: Statement, like: String },
-    Assign(String, Statement),
+    Call(Statement, Statement),
     Set { name: String, value: Statement },
     Nil,
     Name(String),
@@ -39,8 +39,8 @@ pub enum StatementV {
     OperationBool(ActionV, Statement, Option<Statement>),
     OperationNumder(ActionV, Statement, Statement),
     If(Statement, Statement, Option<Statement>),
-    OutExpr { expr: Statement, to: RefCell<FlowListener> },
-    In(FlowStreamer),
+    Out { expr: Statement, to: RefCell<FlowListener> },
+    In(RefCell<FlowStreamer>),
     Jump(bool),
 }
 #[derive(Debug, Clone, PartialEq)]
@@ -48,10 +48,10 @@ pub enum ActionV {
     Not,
     And,
     Or,
-    Plus,
-    Minus,
-    Divide,
-    Multiply,
+    Add,
+    Sub,
+    Div,
+    Mul,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComparsionV {
@@ -222,10 +222,10 @@ impl TokenV {
     }
     pub fn token_to_action_type(&self) -> ActionV {
         match &self {
-            TokenV::Sign(1) => ActionV::Plus,
-            TokenV::Sign(2) => ActionV::Minus,
-            TokenV::Sign(3) => ActionV::Multiply,
-            TokenV::Sign(4) => ActionV::Divide,
+            TokenV::Sign(1) => ActionV::Add,
+            TokenV::Sign(2) => ActionV::Sub,
+            TokenV::Sign(3) => ActionV::Mul,
+            TokenV::Sign(4) => ActionV::Div,
             TokenV::Mark(1) => ActionV::Not,
             TokenV::Mark(7) => ActionV::And,
             TokenV::Mark(9) => ActionV::Or,

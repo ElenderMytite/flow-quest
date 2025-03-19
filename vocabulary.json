@@ -1,4 +1,5 @@
 {
-    "keywords": {"again": 17},
-    "libwords": {}
+    "keywords": {},
+    "libwords": {},
+    "parent": "std"
 }

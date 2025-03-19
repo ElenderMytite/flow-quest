@@ -111,9 +111,9 @@ fn parse_statement(tokens: &mut Vec<TokenV>, listener: &RefCell<FlowListener>) -
                 })
             }
             5 => {
-                let name = tokens.pop().unwrap().get_string_from_name();
+                let call = parse_statement(tokens, listener);
                 let value = get_data_from_chain(tokens, listener);
-                Rc::new(StatementV::Assign(name, value.into()))
+                Rc::new(StatementV::Call(call.into(), value.into()))
             }
             16 => {
                 let repeat = match tokens.pop().unwrap() {
@@ -123,10 +123,10 @@ fn parse_statement(tokens: &mut Vec<TokenV>, listener: &RefCell<FlowListener>) -
                 };
                 Rc::new(StatementV::Jump(repeat))
             }
-            19 => Rc::new(StatementV::In(FlowStreamer::None)),
+            19 => Rc::new(StatementV::In(RefCell::new(FlowStreamer::None))),
             20 => {
                 let to_out: Rc<StatementV> = parse_statement(tokens, listener);
-                Rc::new(StatementV::OutExpr {
+                Rc::new(StatementV::Out {
                     expr: to_out.into(),
                     to: listener.clone(),
                 })

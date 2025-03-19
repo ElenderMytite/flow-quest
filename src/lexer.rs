@@ -112,6 +112,8 @@ fn tokenize_symbol(chars: &mut Vec<char>,) -> Vec<TokenV> {
         "|-" => TokenV::Mark(18),
         "~+" => TokenV::Mark(19),
         "~-" => TokenV::Mark(20),
+        "@+" => TokenV::Mark(21),
+        "@-" => TokenV::Mark(22),
 
         "=" => TokenV::Comparsion(1),
         ">>" => TokenV::Comparsion(2),
