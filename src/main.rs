@@ -10,16 +10,15 @@ use inout::{ask_to_do_smth, get_code_to_run, read_json, Vocabulary};
 use parser::parse_program;
 use types::FlowListener;
 use std::cell::RefCell;
-// use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 fn main() {
     let vocabulary: Vocabulary = read_json("vocabulary.json".to_string());
     let mut tokens: Vec<types::TokenV> = lexer::tokenize_code(get_code_to_run(), &vocabulary.keywords);
-    let mut file_name: String = String::new();
-    println!("Enter file name to save asm code: ");
-    std::io::stdin().read_line(&mut file_name).unwrap();
-    file_name = file_name.trim().to_string();
+    // let mut file_name: String = String::new();
+    // println!("Enter file name to save asm code: ");
+    // std::io::stdin().read_line(&mut file_name).unwrap();
+    // file_name = file_name.trim().to_string();
     if ask_to_do_smth("debug")
     {    
         if ask_to_do_smth("print tokens") {

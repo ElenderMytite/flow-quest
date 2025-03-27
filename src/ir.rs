@@ -252,6 +252,7 @@ fn do_operation(stack: &mut Vec<VarV>, operation: IR)
             ActionV::Sub => b - a,
             ActionV::Mul => b * a,
             ActionV::Div => b / a,
+            ActionV::Mod => b % a,
             _ => panic!("Unknown binary operation: {:?}", action),
         },
         IR::Or => b | a,

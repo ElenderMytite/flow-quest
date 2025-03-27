@@ -85,48 +85,48 @@ fn tokenize_symbol(chars: &mut Vec<char>,) -> Vec<TokenV> {
         "}" => TokenV::Brackets {id: 3, is_opened: false},
         "<" => TokenV::Brackets { id: 4, is_opened: true },
         ">" => TokenV::Brackets { id: 4, is_opened: false },
-
+        
         "!!" => TokenV::Bool(false),
         "==" => TokenV::Bool(true),
-
+        
         "~" => TokenV::Mark(0),
         "!" => TokenV::Mark(1),
         "@" => TokenV::Mark(2),
         "#" => TokenV::Mark(3),
         "$" => TokenV::Mark(4),
-        "%" => TokenV::Mark(5),
         "^" => TokenV::Mark(6),
         "&" => TokenV::Mark(7),
         "?" => TokenV::Mark(8),
         "|" => TokenV::Mark(9),
-
+        
         "!:" => TokenV::Mark(11),
         "!-" => TokenV::Mark(12),
         "!+" => TokenV::Mark(13),
-
+        
         "--" => TokenV::Mark(14),
         "=>" => TokenV::Mark(15),
         "->" => TokenV::Mark(16),
-
+        
         "|+" => TokenV::Mark(17),
         "|-" => TokenV::Mark(18),
         "~+" => TokenV::Mark(19),
         "~-" => TokenV::Mark(20),
         "@+" => TokenV::Mark(21),
         "@-" => TokenV::Mark(22),
-
+        
         "=" => TokenV::Comparsion(1),
         ">>" => TokenV::Comparsion(2),
         "<<" => TokenV::Comparsion(3),
         "!=" | "=!" => TokenV::Comparsion(4),
         ">=" => TokenV::Comparsion(5),
         "<=" => TokenV::Comparsion(6),
-
+        
         "+" => TokenV::Sign(1),
         "-" => TokenV::Sign(2),
         "*" => TokenV::Sign(3),
         "/" => TokenV::Sign(4),
-
+        "%" => TokenV::Sign(5),
+        
         _ => panic!(
             "unexpected symbol sequence: {}",
             symbol_sequence
