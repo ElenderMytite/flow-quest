@@ -1,12 +1,12 @@
 # i -- 8,
-# out -- 0,
+# prev -- 0,
 # cur -- 1,
 {
     ? i = 0 -> |-,
-    # res -- out,
+    # res -- prev,
     # i -- i - 1,
-    # out -- cur,
-    # cur -- out + res,
-    ~- out,
+    # prev -- cur,
+    # cur -- prev + res,
+    ~- prev,
     -> again.
 }.

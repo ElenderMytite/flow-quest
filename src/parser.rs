@@ -100,21 +100,6 @@ fn parse_statement(tokens: &mut Vec<TokenV>, listener: &RefCell<FlowListener>) -
                 let value: Statement = get_data_from_chain(tokens, listener).into();
                 Rc::new(StatementV::Set { name, value })
             }
-            4 => {
-                let link = parse_expression(tokens, 1, listener).into();
-                Rc::new(StatementV::Define {
-                    link,
-                    like: match get_data_from_chain(tokens, listener).as_ref() {
-                        StatementV::Name(path) => path.clone(),
-                        _ => panic!("expected name in defining;"),
-                    },
-                })
-            }
-            5 => {
-                let name = tokens.pop().unwrap().get_string_from_name();
-                let value = get_data_from_chain(tokens, listener);
-                Rc::new(StatementV::Assign(name, value.into()))
-            }
             16 => {
                 let repeat = match tokens.pop().unwrap() {
                     TokenV::Mark(17) => true,
@@ -123,10 +108,10 @@ fn parse_statement(tokens: &mut Vec<TokenV>, listener: &RefCell<FlowListener>) -
                 };
                 Rc::new(StatementV::Jump(repeat))
             }
-            19 => Rc::new(StatementV::In(FlowStreamer::None)),
+            19 => Rc::new(StatementV::In(RefCell::new(FlowStreamer::None))),
             20 => {
                 let to_out: Rc<StatementV> = parse_statement(tokens, listener);
-                Rc::new(StatementV::OutExpr {
+                Rc::new(StatementV::Out {
                     expr: to_out.into(),
                     to: listener.clone(),
                 })
@@ -231,17 +216,8 @@ fn parse_primary(tokens: &mut Vec<TokenV>, listener: &RefCell<FlowListener>) -> 
                         ))
                     }
                     4 => {
-                        let expr: Rc<StatementV> = parse_expression(tokens, 1, listener);
-                        if let TokenV::Brackets {
-                            id: 4,
-                            is_opened: false,
-                        } = tokens.pop().unwrap()
-                        {
-                        } else {
-                            panic!("Mismatched > paren");
-                        }
-                        expr
-                    }
+                        parse_block(tokens, TokenV::Brackets { id: 4, is_opened: false }, listener)
+                    }    
                     _ => panic!("unexpected brace id"),
                 }
             } else {

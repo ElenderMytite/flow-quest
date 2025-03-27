@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     borrow::Borrow,
     collections::HashMap,
-    fs::File,
+    fs::{self, File},
     io::{self, stdin, Read},
 };
 #[derive(Debug)]
@@ -41,6 +41,10 @@ impl From<VocabularyBuilder> for Vocabulary {
         }
     }
 }
+pub fn create_file(name: String, contents: String){
+    File::create("asm/".to_string() + &name + ".asm").expect("cannot create file");
+    fs::write("asm/".to_string() + &name + ".asm", contents).expect("cannot write to file");
+}
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ModulePiece {
     TransFormer,
@@ -59,7 +63,7 @@ pub fn read_json(path: String) -> Vocabulary {
     let builder: VocabularyBuilder = serde_json::from_reader(file).expect("cannot read json");
     Vocabulary::from(builder)
 }
-pub fn get_way_to_run() -> String {
+pub fn get_code_to_run() -> String {
     let mut option: String = String::from("");
     let mut code: String = String::from("");
     let mut path: String = String::from("");
@@ -80,7 +84,7 @@ pub fn get_way_to_run() -> String {
         }
         _ => {
             println!("invalid option: {:?}; try again ", option);
-            get_way_to_run()
+            get_code_to_run()
         }
     }
 }
@@ -137,7 +141,7 @@ pub fn print_tree(node: Statement, depth: usize) {
                 print_tree(stmt.clone(), depth + 1);
             }
         }
-        StatementV::OutExpr { expr, to } => {
+        StatementV::Out { expr, to } => {
             println!("{}Return:", indent);
             print_tree(expr.clone(), depth + 1);
             println!("{}To: {:?}", indent, *to);
@@ -151,10 +155,11 @@ pub fn print_tree(node: Statement, depth: usize) {
             print_tree(link.clone(), depth + 1);
             println!("{}As: {}", indent, like);
         }
-        StatementV::Assign(module_path, rc) => {
-            println!("{}Assign:", indent);
+        StatementV::Call(args, rc) => {
+            println!("{}Call:", indent);
             print_tree(rc.clone(), depth + 1);
-            println!("{}To: {}", indent, module_path);
+            println!("{}To: ", indent);
+            print_tree(args.clone(), depth + 1);
         }
         StatementV::Jump(up) => {
             let place = if *up {

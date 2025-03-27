@@ -1,5 +1,6 @@
 use crate::types::{ActionV, BlockV, ComparsionV, Statement, StatementV, VarV};
 use crate::types::{FlowListener, FlowStreamer};
+use core::panic;
 use std::cell::RefCell;
 #[derive(Debug, Clone)]
 #[allow(unused_variables, dead_code)]
@@ -17,10 +18,10 @@ pub enum IR {
 
     Nil,
 
-    Add,
-    Sub,
-    Mul,
-    Div,
+    BinExpr(ActionV),
+    
+    
+    
 
     Not,
     Or,
@@ -69,9 +70,13 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
             ast_to_ir(link, ir);
             ir.push(IR::Store(like));
         }
-        StatementV::Assign(module_path, statement) => {
+        StatementV::Call(transformer, statement) => {
             ast_to_ir(statement, ir);
-            ir.push(IR::Store(module_path));
+            match transformer.get_ast() {
+                StatementV::Name(name) => ir.push(IR::Exe(name)),
+                value => ir.push(IR::Efine({let mut v =vec![]; ast_to_ir(Statement{value: Rc::new(value)},&mut v); v})),
+                
+            }
         }
         StatementV::Set { name, value } => {
             ast_to_ir(value, ir);
@@ -110,13 +115,7 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
         StatementV::OperationNumder(action_type, statement, statement1) => {
             ast_to_ir(statement, ir);
             ast_to_ir(statement1, ir);
-            ir.push(match action_type {
-                ActionV::Plus => IR::Add,
-                ActionV::Minus => IR::Sub,
-                ActionV::Divide => IR::Div,
-                ActionV::Multiply => IR::Mul,
-                _ => todo!(),
-            });
+            ir.push(IR::BinExpr(action_type));
         }
         StatementV::If(statement, statement1, statement2) => {
             ast_to_ir(statement, ir);
@@ -130,15 +129,16 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
                 ast_to_ir(statement2, ir);
             }
         }
-        StatementV::OutExpr { expr, to } => {
+        StatementV::Out { expr, to } => {
             ast_to_ir(expr, ir);
             ir.push(IR::Output(to));
         }
-        StatementV::In(_) => ir.push(IR::Input(RefCell::new(FlowStreamer::Console))),
+        StatementV::In(streamer) => ir.push(IR::Input(streamer)),
         StatementV::Jump(t) => ir.push(IR::Jump(if t { 0 } else { usize::MAX })),
     }
 }
 use std::collections::HashMap;
+use std::rc::Rc;
 
 pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarV>) -> Vec<VarV> {
     let mut stack: Vec<VarV> = Vec::new();
@@ -152,10 +152,7 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarV>) -> Vec<VarV> {
             IR::Code(c) => {
                 stack.push(VarV::Procedure(c.clone()));
             }
-            IR::Add |
-            IR::Sub |
-            IR::Mul |
-            IR::Div |
+            IR::BinExpr(_) |
             IR::Or |
             IR::And |
             IR::Not |
@@ -226,15 +223,7 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarV>) -> Vec<VarV> {
             }
             IR::Output(ref_cell) => {
                 let top = stack.pop().unwrap();
-                println!(
-                    "ref_cell: {:?} top: {:?}, stack: {:?}",
-                    ref_cell, top, stack
-                );
-
-                let ok_run = ref_cell.borrow().get(top.clone());
-
-                println!("ok_run: {:?}", ok_run);
-                assert!(ok_run);
+                assert!(ref_cell.borrow().get(top.clone()));
             }
         }
         index += 1;
@@ -258,10 +247,14 @@ fn do_operation(stack: &mut Vec<VarV>, operation: IR)
     }
     let b = stack.pop().unwrap();
     stack.push(match operation {
-        IR::Add => b + a,
-        IR::Sub => b - a,
-        IR::Mul => b * a,
-        IR::Div => b / a,
+        IR::BinExpr(action) => match action {
+            ActionV::Add => b + a,
+            ActionV::Sub => b - a,
+            ActionV::Mul => b * a,
+            ActionV::Div => b / a,
+            ActionV::Mod => b % a,
+            _ => panic!("Unknown binary operation: {:?}", action),
+        },
         IR::Or => b | a,
         IR::And => b & a,
         IR::Eql => VarV::Bool(a == b),

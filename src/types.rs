@@ -1,6 +1,7 @@
 use core::ops::{Add, Div, Mul, Not, Sub, BitOr, BitAnd};
 use std::cell::RefCell;
 use std::cmp::{Eq, Ord, PartialEq, PartialOrd};
+use std::ops::Rem;
 use std::rc::Rc;
 use crate::ir::IR;
 #[derive(Debug, Clone, PartialEq)]
@@ -29,7 +30,7 @@ impl From<Statement> for Rc<StatementV> {
 pub enum StatementV {
     Block(Vec<Statement>, BlockV),
     Define { link: Statement, like: String },
-    Assign(String, Statement),
+    Call(Statement, Statement),
     Set { name: String, value: Statement },
     Nil,
     Name(String),
@@ -39,8 +40,8 @@ pub enum StatementV {
     OperationBool(ActionV, Statement, Option<Statement>),
     OperationNumder(ActionV, Statement, Statement),
     If(Statement, Statement, Option<Statement>),
-    OutExpr { expr: Statement, to: RefCell<FlowListener> },
-    In(FlowStreamer),
+    Out { expr: Statement, to: RefCell<FlowListener> },
+    In(RefCell<FlowStreamer>),
     Jump(bool),
 }
 #[derive(Debug, Clone, PartialEq)]
@@ -48,10 +49,11 @@ pub enum ActionV {
     Not,
     And,
     Or,
-    Plus,
-    Minus,
-    Divide,
-    Multiply,
+    Add,
+    Sub,
+    Div,
+    Mul,
+    Mod,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComparsionV {
@@ -158,6 +160,16 @@ impl Div for VarV {
         }
     }
 }
+impl Rem for VarV {
+    type Output = Self;
+    fn rem(self, other: Self) -> Self {
+        match (self, other) {
+            (VarV::Num(a), VarV::Num(b)) => VarV::Num(a % b),
+            _ => panic!("Type mismatch"),
+        }
+    }
+    
+}
 impl BitOr for VarV {
     type Output = Self;
     fn bitor(self, other: Self) -> Self {
@@ -213,7 +225,7 @@ impl TokenV {
         match &self {
             TokenV::Comparsion(_) => 4,
             TokenV::Sign(1..=2) => 5,
-            TokenV::Sign(3..=4) => 6,
+            TokenV::Sign(3..=5) => 6,
             TokenV::Mark(7) => 2,
             TokenV::Mark(9) => 1,
             TokenV::Mark(1) => 3,
@@ -222,10 +234,11 @@ impl TokenV {
     }
     pub fn token_to_action_type(&self) -> ActionV {
         match &self {
-            TokenV::Sign(1) => ActionV::Plus,
-            TokenV::Sign(2) => ActionV::Minus,
-            TokenV::Sign(3) => ActionV::Multiply,
-            TokenV::Sign(4) => ActionV::Divide,
+            TokenV::Sign(1) => ActionV::Add,
+            TokenV::Sign(2) => ActionV::Sub,
+            TokenV::Sign(3) => ActionV::Mul,
+            TokenV::Sign(4) => ActionV::Div,
+            TokenV::Sign(5) => ActionV::Mod,
             TokenV::Mark(1) => ActionV::Not,
             TokenV::Mark(7) => ActionV::And,
             TokenV::Mark(9) => ActionV::Or,
