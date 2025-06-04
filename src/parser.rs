@@ -201,6 +201,20 @@ fn parse_primary(tokens: &mut Vec<TokenV>, listener: &RefCell<FlowListener>) -> 
                         }
                         expr
                     }
+                    2 => {
+                        let expr: Rc<StatementV> = parse_block(
+                            tokens,
+                            TokenV::Brackets {
+                                id: 2,
+                                is_opened: false,
+                            },
+                            listener,
+                        );
+                        Rc::new(StatementV::Block(
+                            get_statements_of_block(expr),
+                            BlockV::Storage,
+                        ))
+                    }
                     3 => {
                         let expr: Rc<StatementV> = parse_block(
                             tokens,

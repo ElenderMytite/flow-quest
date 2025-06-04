@@ -135,6 +135,7 @@ pub fn print_tree(node: Statement, depth: usize) {
             let capt: String = match block_type {
                 crate::types::BlockV::Evaluate => String::from("Evaluate"),
                 crate::types::BlockV::Draft => String::from("Draft"),
+                crate::types::BlockV::Storage => String::from("Storage"),
             };
             println!("{}{}:", indent, capt);
             for stmt in vec {

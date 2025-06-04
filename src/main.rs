@@ -15,10 +15,6 @@ use std::rc::Rc;
 fn main() {
     let vocabulary: Vocabulary = read_json("vocabulary.json".to_string());
     let mut tokens: Vec<types::TokenV> = lexer::tokenize_code(get_code_to_run(), &vocabulary.keywords);
-    // let mut file_name: String = String::new();
-    // println!("Enter file name to save asm code: ");
-    // std::io::stdin().read_line(&mut file_name).unwrap();
-    // file_name = file_name.trim().to_string();
     if ask_to_do_smth("debug")
     {    
         if ask_to_do_smth("print tokens") {
@@ -49,12 +45,13 @@ fn main() {
         assert_eq!(tokens.len(), 0);
         let mut ir: Vec<ir::IR> = vec![];
         ir::ast_to_ir(tree.clone().into(), &mut ir);
-        // let mut asm_generator = asm_gen::AssemblyGenerator::new(ir.clone(), String::new(), HashMap::new(), 0);
-        // asm_generator.assembly();
-        // asm_generator.print_asm();
-        // asm_generator.save_asm(file_name);
         let mut env: HashMap<String, VarV> = HashMap::new();
         println!("output: ");
-        ir::execute(ir, &mut env);
+        ir::execute(ir.clone(), &mut env);
+        let mut asm_gen = asm_gen::AssemblyGenerator::new(ir, "".to_string(), HashMap::new(), 0);
+        asm_gen.assembly();
+        if ask_to_do_smth("print asm") {
+            asm_gen.print_asm();
+        }
     }
 }

@@ -68,6 +68,7 @@ pub enum ComparsionV {
 pub enum BlockV {
     Evaluate,
     Draft,
+    Storage,
 }
 #[derive(Debug, Clone)]
 pub enum VarV {

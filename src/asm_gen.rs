@@ -23,10 +23,10 @@ impl AssemblyGenerator {
         let s = &mut self.asm;
         match ir {
             IR::Num(i) => {
-                *s += &format!("\tmov rax, {}\n\tpush rax\n", i);
+                *s += &format!("\tpush {}\n", i);
             }
             IR::Bool(b) => {
-                *s += &format!("\tmov rax, {}\n\tpush rax\n", if b { 1 } else { 0 });
+                *s += &format!("\tpush {}\n", if b { 1 } else { 0 });
             }
             IR::Code(_) => (),
             IR::Nil => (),
@@ -38,7 +38,7 @@ impl AssemblyGenerator {
                     ActionV::Div => "div",
                     _ => panic!("Unknown operator"),
                 };
-                *s += &format!("\tpop rax\n\tpop rbx\n\t{} rax, rbx\n\tpush rax\n", op);
+                *s += &format!("\tpop rax\n\t{} qword [rsp] rax, \n", op);
             }
             IR::Not => (),
             IR::Or => (),
@@ -65,14 +65,12 @@ impl AssemblyGenerator {
                 }
             }
             IR::Input(_) => (),
-            IR::Output(_) => {
-                *s += "\tpop rdi\n\tmov rax, \n";
-            }
+            IR::Output(_) => (),
             IR::Case(_, _) => (),
         }
     }
     pub fn print_asm(&self) {
-        println!("\nasm: {}", self.asm);
+        println!("asm: \n\n{}", self.asm);
     }
     pub fn save_asm(&self, path: String) {
         crate::inout::create_file(path, self.asm.clone());

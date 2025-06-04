@@ -20,9 +20,6 @@ pub enum IR {
 
     BinExpr(ActionV),
     
-    
-    
-
     Not,
     Or,
     And,
@@ -65,6 +62,7 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
                 }
                 ir.push(IR::Code(ir_block));
             }
+            _ => panic!("Block type {:?} not implemented yet", block_type),
         },
         StatementV::Define { link, like } => {
             ast_to_ir(link, ir);
