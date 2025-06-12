@@ -3,6 +3,7 @@ mod ir;
 mod asm_gen;
 mod lexer;
 mod parser;
+mod execute;
 mod tests;
 mod types;
 use crate::types::VarV;
@@ -36,7 +37,7 @@ fn main() {
             }
             if ask_to_do_smth("run ir") {
                 let mut env = HashMap::new();
-                ir::execute(ir, &mut env);
+                execute::execute(ir, &mut env);
             }
         }
     }
@@ -47,7 +48,7 @@ fn main() {
         ir::ast_to_ir(tree.clone().into(), &mut ir);
         let mut env: HashMap<String, VarV> = HashMap::new();
         println!("output: ");
-        ir::execute(ir.clone(), &mut env);
+        execute::execute(ir.clone(), &mut env);
         let mut asm_gen = asm_gen::AssemblyGenerator::new(ir, "".to_string(), HashMap::new(), 0);
         asm_gen.assembly();
         if ask_to_do_smth("print asm") {
