@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::ir::ast_to_ir;
-use crate::execute::execute;
+use crate::vm::execute;
 use crate::lexer::tokenize_code;
 use crate::parser::*;
 use crate::types::{FlowListener, Statement};

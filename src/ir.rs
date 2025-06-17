@@ -136,3 +136,28 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
         StatementV::Jump(t) => ir.push(IR::Jump(if t { 0 } else { usize::MAX })),
     }
 }
+#[allow(unused_variables, dead_code)]
+pub fn generate_bytecode(ast_node: Statement) -> Vec<u8> {
+    let mut code: Vec<u8> = Vec::new();
+    match ast_node.get_ast() {
+        StatementV::Block(statements, block_v) => todo!(),
+        StatementV::Define { link, like } => todo!(),
+        StatementV::Call(statement, statement1) => todo!(),
+        StatementV::Set { name, value } => todo!(),
+        StatementV::Nil => (),
+        StatementV::Name(n) => todo!(),
+        StatementV::Bool(b) => {
+            code.push(0);
+            code.push(if b { 1 } else { 0 });
+        },
+        StatementV::Number(n) => {
+            code.push(0);
+            let bytes = n.to_le_bytes();
+            code.extend_from_slice(&bytes);
+        },
+        StatementV::Comparsion(comparsion_v, statement, statement1) => todo!(),
+        _ => (),
+    }
+    code.push(255);
+    code
+}
