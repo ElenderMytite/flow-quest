@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use crate::types::TokenV;
+use crate::types::Token;
 
-pub fn tokenize_code(eq: String, keywords: &HashMap<String,u8>) -> Vec<TokenV> {
+pub fn tokenize_code(eq: String, keywords: &HashMap<String,u8>) -> Vec<Token> {
     let mut chars: Vec<char> = eq.chars().rev().collect();
-    let mut tokens: Vec<TokenV> = Vec::new();
+    let mut tokens: Vec<Token> = Vec::new();
     while chars.len() > 0 {
         match chars.last().unwrap() {
             '\n' | '\r' | '\t' | ' ' => {chars.pop().unwrap();},
@@ -17,10 +17,10 @@ pub fn tokenize_code(eq: String, keywords: &HashMap<String,u8>) -> Vec<TokenV> {
             _ => println!("symbol not recognized: {}", chars.last().unwrap()),
         }
     }
-    tokens.push(TokenV::EOF);
+    tokens.push(Token::EOF);
     tokens
 }
-fn tokenize_name(chars: &mut Vec<char>,keywords: &HashMap<String,u8>) -> TokenV {
+fn tokenize_name(chars: &mut Vec<char>,keywords: &HashMap<String,u8>) -> Token {
     let mut name: String = String::new();
     loop {
         if chars.len() > 0 {
@@ -34,15 +34,15 @@ fn tokenize_name(chars: &mut Vec<char>,keywords: &HashMap<String,u8>) -> TokenV 
         name.push(i);
     }
     match keywords.get(name.as_str()) {
-        Some(val) => TokenV::Mark(*val),
-        None => TokenV::Name(name),
+        Some(val) => Token::Mark(*val),
+        None => Token::Name(name),
     }
 
 }
-fn tokenize_number(chars: &mut Vec<char>) -> TokenV {
+fn tokenize_number(chars: &mut Vec<char>) -> Token {
     let mut number: String = String::new();
     if chars.len() == 0 {
-        return TokenV::Number(0);
+        return Token::Number(0);
     }
     loop {
         if chars.len() > 0 {
@@ -55,10 +55,10 @@ fn tokenize_number(chars: &mut Vec<char>) -> TokenV {
         let i = chars.pop().unwrap();
         number.push(i);
     }
-    TokenV::Number(number.parse().unwrap())
+    Token::Number(number.parse().unwrap())
 }
-fn tokenize_symbol(chars: &mut Vec<char>,) -> Vec<TokenV> {
-    let mut tokens: Vec<TokenV> = Vec::new();
+fn tokenize_symbol(chars: &mut Vec<char>,) -> Vec<Token> {
+    let mut tokens: Vec<Token> = Vec::new();
     let mut symbol_sequence:String = String::new();
     while chars.len() > 0 {
         if !chars.last().unwrap().is_ascii_punctuation()
@@ -67,7 +67,7 @@ fn tokenize_symbol(chars: &mut Vec<char>,) -> Vec<TokenV> {
         }
         let i = chars.pop().unwrap();
         if let ',' | '.' = i {
-            tokens.push(TokenV::Dot(i == ','));
+            tokens.push(Token::Dot(i == ','));
             if symbol_sequence.len() == 0 {
                 return tokens;
             }
@@ -77,55 +77,55 @@ fn tokenize_symbol(chars: &mut Vec<char>,) -> Vec<TokenV> {
     }
     tokens.insert(0,match symbol_sequence.as_str() {
 
-        "(" => TokenV::Brackets {id: 1,  is_opened: true},
-        ")" => TokenV::Brackets {id: 1, is_opened: false},
-        "[" => TokenV::Brackets {id: 2,  is_opened: true},
-        "]" => TokenV::Brackets {id: 2, is_opened: false},
-        "{" => TokenV::Brackets {id: 3,  is_opened: true},
-        "}" => TokenV::Brackets {id: 3, is_opened: false},
-        "<" => TokenV::Brackets { id: 4, is_opened: true },
-        ">" => TokenV::Brackets { id: 4, is_opened: false },
+        "(" => Token::Brackets {id: 1,  is_opened: true},
+        ")" => Token::Brackets {id: 1, is_opened: false},
+        "[" => Token::Brackets {id: 2,  is_opened: true},
+        "]" => Token::Brackets {id: 2, is_opened: false},
+        "{" => Token::Brackets {id: 3,  is_opened: true},
+        "}" => Token::Brackets {id: 3, is_opened: false},
+        "<" => Token::Brackets { id: 4, is_opened: true },
+        ">" => Token::Brackets { id: 4, is_opened: false },
         
-        "!!" => TokenV::Bool(false),
-        "==" => TokenV::Bool(true),
+        "!!" => Token::Bool(false),
+        "==" => Token::Bool(true),
         
-        "~" => TokenV::Mark(0),
-        "!" => TokenV::Mark(1),
-        "@" => TokenV::Mark(2),
-        "#" => TokenV::Mark(3),
-        "$" => TokenV::Mark(4),
-        "^" => TokenV::Mark(6),
-        "&" => TokenV::Mark(7),
-        "?" => TokenV::Mark(8),
-        "|" => TokenV::Mark(9),
+        "~" => Token::Mark(0),
+        "!" => Token::Mark(1),
+        "@" => Token::Mark(2),
+        "#" => Token::Mark(3),
+        "$" => Token::Mark(4),
+        "^" => Token::Mark(6),
+        "&" => Token::Mark(7),
+        "?" => Token::Mark(8),
+        "|" => Token::Mark(9),
         
-        "!:" => TokenV::Mark(11),
-        "!-" => TokenV::Mark(12),
-        "!+" => TokenV::Mark(13),
+        "!:" => Token::Mark(11),
+        "!-" => Token::Mark(12),
+        "!+" => Token::Mark(13),
         
-        "--" => TokenV::Mark(14),
-        "=>" => TokenV::Mark(15),
-        "->" => TokenV::Mark(16),
+        "--" => Token::Mark(14),
+        "=>" => Token::Mark(15),
+        "->" => Token::Mark(16),
         
-        "|+" => TokenV::Mark(17),
-        "|-" => TokenV::Mark(18),
-        "~+" => TokenV::Mark(19),
-        "~-" => TokenV::Mark(20),
-        "@+" => TokenV::Mark(21),
-        "@-" => TokenV::Mark(22),
+        "|+" => Token::Mark(17),
+        "|-" => Token::Mark(18),
+        "~+" => Token::Mark(19),
+        "~-" => Token::Mark(20),
+        "@+" => Token::Mark(21),
+        "@-" => Token::Mark(22),
         
-        "=" => TokenV::Comparsion(1),
-        ">>" => TokenV::Comparsion(2),
-        "<<" => TokenV::Comparsion(3),
-        "!=" | "=!" => TokenV::Comparsion(4),
-        ">=" => TokenV::Comparsion(5),
-        "<=" => TokenV::Comparsion(6),
+        "=" => Token::Comparsion(1),
+        ">>" => Token::Comparsion(2),
+        "<<" => Token::Comparsion(3),
+        "!=" | "=!" => Token::Comparsion(4),
+        ">=" => Token::Comparsion(5),
+        "<=" => Token::Comparsion(6),
         
-        "+" => TokenV::Sign(1),
-        "-" => TokenV::Sign(2),
-        "*" => TokenV::Sign(3),
-        "/" => TokenV::Sign(4),
-        "%" => TokenV::Sign(5),
+        "+" => Token::Sign(1),
+        "-" => Token::Sign(2),
+        "*" => Token::Sign(3),
+        "/" => Token::Sign(4),
+        "%" => Token::Sign(5),
         
         _ => panic!(
             "unexpected symbol sequence: {}",

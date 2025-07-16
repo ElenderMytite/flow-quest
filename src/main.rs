@@ -1,6 +1,5 @@
 mod inout;
 mod ir;
-mod asm_gen;
 mod lexer;
 mod parser;
 mod vm;
@@ -15,7 +14,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 fn main() {
     let vocabulary: Vocabulary = read_json("vocabulary.json".to_string());
-    let mut tokens: Vec<types::TokenV> = lexer::tokenize_code(get_code_to_run(), &vocabulary.keywords);
+    let mut tokens: Vec<types::Token> = lexer::tokenize_code(get_code_to_run(), &vocabulary.keywords);
     if ask_to_do_smth("debug")
     {    
         if ask_to_do_smth("print tokens") {
@@ -49,10 +48,5 @@ fn main() {
         let mut env: HashMap<String, VarV> = HashMap::new();
         println!("output: ");
         vm::execute(ir.clone(), &mut env);
-        let mut asm_gen = asm_gen::AssemblyGenerator::new(ir, "".to_string(), HashMap::new(), 0);
-        asm_gen.assembly();
-        if ask_to_do_smth("print asm") {
-            asm_gen.print_asm();
-        }
     }
 }

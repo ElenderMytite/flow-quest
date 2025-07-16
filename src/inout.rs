@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     borrow::Borrow,
     collections::HashMap,
-    fs::{self, File},
+    fs::File,
     io::{self, stdin, Read},
 };
 #[derive(Debug)]
@@ -40,10 +40,6 @@ impl From<VocabularyBuilder> for Vocabulary {
             }
         }
     }
-}
-pub fn create_file(name: String, contents: String){
-    File::create("asm/".to_string() + &name + ".asm").expect("cannot create file");
-    fs::write("asm/".to_string() + &name + ".asm", contents).expect("cannot write to file");
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ModulePiece {

@@ -147,117 +147,9 @@ pub fn execute_bytecode(bytecode: Vec<u8>) -> Stack {
                 // POP
                 stack.pop(1);
             }
-            2 => {
-                // ADD
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&(b as u16 + a as u16).to_le_bytes());
-            }
-            3 => {
-                // SUB
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&(b as u16 - a as u16).to_le_bytes());
-            }
-            4 => {
-                // MUL
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&(b as u16 * a as u16).to_le_bytes());
-            }
-            5 => {
-                // DIV                
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&(b as u16 / a as u16).to_le_bytes());
-            }
-            6 => {
-                // MOD
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&[b % a]);
-            }
-            7 => {
-                // EQL
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&[if b == a { 1 } else { 0 }]);
-            }
-            8 => {
-                // NEQL
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&[if b != a { 1 } else { 0 }]);            
-            }
-            9 => {
-                // LS
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&[if b < a { 1 } else { 0 }]);
-            }
-            10 => {
-                // GT
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&[if b > a { 1 } else { 0 }]);
-            }
-            11 => {
-                // LSEQL
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&[if b <= a { 1 } else { 0 }]);
-            }
-            12 => {
-                // GTEQL
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&[if b >= a { 1 } else { 0 }]);
-            }
-            13 => {
-                // NOT
-                let a = stack.pop(1)[0];
-                stack.push(&[if a == 0 { 1 } else { 0 }]);
-            }
-            14 => {
-                // AND
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&[if b != 0 && a != 0 { 1 } else { 0 }]);
-            }
-            15 => {
-                // OR
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&[if b != 0 || a != 0 { 1 } else { 0 }]);
-            }
-            16 => {
-                // XOR
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&[if (b != 0) ^ (a != 0) { 1 } else { 0 }]);
-            }
-            17 => {
-                // BIT_AND
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&[b & a]);
-            }
-            18 => {
-                // BIT_OR
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&[b | a]);
-            }
-            19 => {
-                // BIT_XOR
-                let a = stack.pop(1)[0];
-                let b = stack.pop(1)[0];
-                stack.push(&[b ^ a]);
-            }
-            20 => {
-                // BIT_NOT
-                let a = stack.pop(1)[0];
-                stack.push(&[!a]);
+            2..=20 => {
+                // Binary operations and NOT
+                stack.do_operation(instruction);
             }
             21 => {
                 // DUP
@@ -271,24 +163,6 @@ pub fn execute_bytecode(bytecode: Vec<u8>) -> Stack {
                 stack.push(&[a]);
                 stack.push(&[b]);
             }
-            // 127 => {
-            //     // LOAD
-            //     let address = bytecode.get(ip + 1).unwrap_or(&0).clone() as usize;
-            //     if address < stack.len() {
-            //         stack.push(stack.data[address]);
-            //     } else {
-            //         panic!("Load instruction out of bounds");
-            //     }
-            // }
-            // 128 => {
-            //     // STORE
-            //     let address = bytecode.get(ip + 1).unwrap_or(&0).clone() as usize;
-            //     if address < stack.len() {
-            //         stack.data[address] = stack.pop(1)[0];
-            //     } else {
-            //         panic!("Store instruction out of bounds");
-            //     }
-            // }
             129 => {
                 // JUMP
                 let jump_address = bytecode.get(ip + 1).unwrap_or(&0).clone() as usize;
@@ -361,6 +235,36 @@ impl Stack {
             self.data[index ]
         } else {
             panic!("Stack index out of bounds");
+        }
+    }
+    pub fn do_operation(&mut self, operation: u8) 
+    {
+        let a = self.pop(1)[0];
+        if operation == 13 { // NOT
+            self.push(&[if a == 0 { 1 } else { 0 }]);
+            return;
+        }
+        let b = self.pop(1)[0];
+        match operation {
+            2 => self.push(&(b as u16 + a as u16).to_le_bytes()), // ADD
+            3 => self.push(&(b as u16 - a as u16).to_le_bytes()), // SUB
+            4 => self.push(&(b as u16 * a as u16).to_le_bytes()), // MUL
+            5 => self.push(&(b as u16 / a as u16).to_le_bytes()), // DIV
+            6 => self.push(&[b % a]), // MOD
+            7 => self.push(&[if b == a { 1 } else { 0 }]), // EQL
+            8 => self.push(&[if b != a { 1 } else { 0 }]), // NEQL
+            9 => self.push(&[if b < a { 1 } else { 0 }]), // LS
+            10 => self.push(&[if b > a { 1 } else { 0 }]), // GT
+            11 => self.push(&[if b <= a { 1 } else { 0 }]), // LSEQL
+            12 => self.push(&[if b >= a { 1 } else { 0 }]), // GTEQL
+            14 => self.push(&[if b != 0 && a != 0 { 1 } else { 0 }]), // AND
+            15 => self.push(&[if b != 0 || a != 0 { 1 } else { 0 }]), // OR
+            16 => self.push(&[if (b != 0) ^ (a != 0) { 1 } else { 0 }]), // XOR
+            17 => self.push(&[b & a]), // BIT_AND
+            18 => self.push(&[b | a]), // BIT_OR
+            19 => self.push(&[b ^ a]), // BIT_XOR
+            20 => self.push(&[!b]), // BIT_NOT
+            _ => panic!("Unknown operation: {}", operation),
         }
     }
     pub fn len(&self) -> usize {

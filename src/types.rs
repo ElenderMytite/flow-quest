@@ -190,7 +190,7 @@ impl BitAnd for VarV {
     }
 }
 #[derive(Debug, Clone, PartialEq)]
-pub enum TokenV {
+pub enum Token {
     Brackets { id: u8, is_opened: bool },
     Sign(u8),
     Bool(bool),
@@ -201,54 +201,47 @@ pub enum TokenV {
     Dot(bool),
     EOF,
 }
-impl TokenV {
-    pub fn get_int_value(&self) -> isize {
-        match &self {
-            TokenV::Number(v) => *v,
-            TokenV::Name(_) => panic!("trying to get name"),
-            _ => panic!("Unexpected token while trying to get int value"),
-        }
-    }
+impl Token {
     pub fn get_string_from_name(&self) -> String {
         match &self {
-            TokenV::Name(name) => name.clone(),
+            Token::Name(name) => name.clone(),
             _ => panic!("expected name"),
         }
     }
     pub fn is_operation(&self) -> bool {
         //print!("{:?}", self);
         match &self {
-            TokenV::Mark(1 | 7 | 9) | TokenV::Comparsion(_) | TokenV::Sign(_) => true,
+            Token::Mark(1 | 7 | 9) | Token::Comparsion(_) | Token::Sign(_) => true,
             _ => false,
         }
     }
     pub fn get_operation_priorety(&self) -> u8 {
         match &self {
-            TokenV::Comparsion(_) => 4,
-            TokenV::Sign(1..=2) => 5,
-            TokenV::Sign(3..=5) => 6,
-            TokenV::Mark(7) => 2,
-            TokenV::Mark(9) => 1,
-            TokenV::Mark(1) => 3,
+            Token::Comparsion(_) => 4,
+            Token::Sign(1..=2) => 5,
+            Token::Sign(3..=5) => 6,
+            Token::Mark(7) => 2,
+            Token::Mark(9) => 1,
+            Token::Mark(1) => 3,
             _ => 0,
         }
     }
     pub fn token_to_action_type(&self) -> ActionV {
         match &self {
-            TokenV::Sign(1) => ActionV::Add,
-            TokenV::Sign(2) => ActionV::Sub,
-            TokenV::Sign(3) => ActionV::Mul,
-            TokenV::Sign(4) => ActionV::Div,
-            TokenV::Sign(5) => ActionV::Mod,
-            TokenV::Mark(1) => ActionV::Not,
-            TokenV::Mark(7) => ActionV::And,
-            TokenV::Mark(9) => ActionV::Or,
+            Token::Sign(1) => ActionV::Add,
+            Token::Sign(2) => ActionV::Sub,
+            Token::Sign(3) => ActionV::Mul,
+            Token::Sign(4) => ActionV::Div,
+            Token::Sign(5) => ActionV::Mod,
+            Token::Mark(1) => ActionV::Not,
+            Token::Mark(7) => ActionV::And,
+            Token::Mark(9) => ActionV::Or,
             _ => panic!("invalid action type"),
         }
     }
     pub fn token_to_comparsion_type(&self) -> ComparsionV {
         match &self {
-            TokenV::Comparsion(id) => match id {
+            Token::Comparsion(id) => match id {
                 1 => ComparsionV::Equal,
                 2 => ComparsionV::Greater,
                 3 => ComparsionV::Less,
