@@ -2,24 +2,24 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::ir::ast_to_ir;
-use crate::execute::execute;
+use crate::vm::execute;
 use crate::lexer::tokenize_code;
 use crate::parser::*;
 use crate::types::{FlowListener, Statement};
-use crate::types::{TokenV, VarV};
+use crate::types::{Token, VarV};
 use crate::inout::*;
 
 #[allow(dead_code)]
 fn run_test_template_oneline(expr: String, expected_result: RefCell<Vec<VarV>>) {
     let vocab = read_json("vocabulary.json".to_string());
-    let mut tokens: Vec<TokenV> = tokenize_code(expr.clone(), &vocab.keywords);
+    let mut tokens: Vec<Token> = tokenize_code(expr.clone(), &vocab.keywords);
     println!("{:?}", tokens);
     let tree: Statement = Statement {
         value: parse_program(&mut tokens, &RefCell::new(FlowListener::Asserter(expected_result))),
     };
     print_tree(tree.clone().into(), 0);
     let mut ir = vec![];
-    ast_to_ir(tree, &mut ir);
+    ast_to_ir(tree.value, &mut ir);
     println!("{:?}", ir.iter().enumerate().collect::<Vec<_>>());
     let mut env = HashMap::new();
     execute(ir, &mut env);
