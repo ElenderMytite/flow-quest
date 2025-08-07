@@ -65,13 +65,13 @@ pub fn get_code_to_run() -> String {
     let mut path: String = String::from("");
     println!("choose option: 1. code in terminal 2.read code from file ");
     stdin().read_line(&mut option).expect("cannot readline");
-    match option.as_str() {
-        "1\r\n" => {
+    match option.trim() {
+        "1" => {
             println!("please input code: ");
             stdin().read_line(&mut code).expect("cannot codeline");
             code
         }
-        "2\r\n" => {
+        "2" => {
             println!("please input file name (without format): ");
             stdin().read_line(&mut path).expect("cannot readpath");
             path.truncate(path.len() - 2);
@@ -88,7 +88,7 @@ pub fn ask_to_do_smth(text: &str) -> bool {
     let mut option: String = String::from("");
     println!("choose option: y: {text} n: do not {text} ");
     stdin().read_line(&mut option).expect("cannot readline");
-    return option.as_str() == "y\r\n";
+    return option.trim() == "y";
 }
 
 pub fn print_tree(node: Statement, depth: usize) {

@@ -46,50 +46,50 @@ pub enum IR {
 
     Case(Vec<MatchPattern>, usize),
 }
-pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
-    match ast_node.get_ast() {
+pub fn ast_to_ir(ast_node: Rc<StatementV>, ir: &mut Vec<IR>) {
+    match ast_node.as_ref() {
         StatementV::Block(vec, block_type) => match block_type {
             BlockV::Evaluate => {
                 let mut ir_block: Vec<IR> = Vec::new();
                 for node in vec {
-                    ast_to_ir(node, &mut ir_block);
+                    ast_to_ir(Rc::clone(&Rc::clone(&node.value)), &mut ir_block);
                 }
                 ir.push(IR::Efine(ir_block));
             }
             BlockV::Draft => {
                 let mut ir_block: Vec<IR> = Vec::new();
                 for node in vec {
-                    ast_to_ir(node, &mut ir_block);
+                    ast_to_ir(Rc::clone(&node.value), &mut ir_block);
                 }
                 ir.push(IR::Code(ir_block));
             }
             _ => panic!("Block type {:?} not implemented yet", block_type),
         },
         StatementV::Define { link, like } => {
-            ast_to_ir(link, ir);
-            ir.push(IR::Store(like));
+            ast_to_ir(Rc::clone(&link.value), ir);
+            ir.push(IR::Store(like.clone()));
         }
         StatementV::Call(transformer, statement) => {
-            ast_to_ir(statement, ir);
+            ast_to_ir(Rc::clone(&statement.value), ir);
             match transformer.get_ast() {
                 StatementV::Name(name) => ir.push(IR::Exe(name)),
-                value => ir.push(IR::Efine({let mut v =vec![]; ast_to_ir(Statement{value: Rc::new(value)},&mut v); v})),
-                
+                value => ir.push(IR::Efine({let mut v =vec![]; 
+                ast_to_ir(Rc::new(value),&mut v); v})),
             }
         }
         StatementV::Set { name, value } => {
-            ast_to_ir(value, ir);
-            ir.push(IR::Store(name));
+            ast_to_ir(Rc::clone(&value.value), ir);
+            ir.push(IR::Store(name.clone()));
         }
         StatementV::Nil => ir.push(IR::Nil),
         StatementV::Name(s) => {
-            ir.push(IR::Load(s));
+            ir.push(IR::Load(s.clone()));
         }
-        StatementV::Bool(v) => ir.push(IR::Bool(v)),
-        StatementV::Number(v) => ir.push(IR::Num(v)),
+        StatementV::Bool(v) => ir.push(IR::Bool(*v)),
+        StatementV::Number(v) => ir.push(IR::Num(*v)),
         StatementV::Comparsion(comparsion_type, statement, statement1) => {
-            ast_to_ir(statement, ir);
-            ast_to_ir(statement1, ir);
+            ast_to_ir(Rc::clone(&statement.value), ir);
+            ast_to_ir(Rc::clone(&statement1.value), ir);
             ir.push(match comparsion_type {
                 ComparsionV::Equal => IR::Eql,
                 ComparsionV::NotEqual => IR::NEql,
@@ -100,9 +100,9 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
             });
         }
         StatementV::OperationBool(action_type, statement, statement1) => {
-            ast_to_ir(statement, ir);
+            ast_to_ir(Rc::clone(&statement.value), ir);
             if let Some(statement1) = statement1 {
-                ast_to_ir(statement1, ir);
+                ast_to_ir(Rc::clone(&statement1.value), ir);
             }
             ir.push(match action_type {
                 ActionV::Not => IR::Not,
@@ -112,28 +112,28 @@ pub fn ast_to_ir(ast_node: Statement, ir: &mut Vec<IR>) {
             });
         }
         StatementV::OperationNumder(action_type, statement, statement1) => {
-            ast_to_ir(statement, ir);
-            ast_to_ir(statement1, ir);
-            ir.push(IR::BinExpr(action_type));
+            ast_to_ir(Rc::clone(&statement.value), ir);
+            ast_to_ir(Rc::clone(&statement1.value), ir);
+            ir.push(IR::BinExpr(action_type.clone()));
         }
         StatementV::If(statement, statement1, statement2) => {
-            ast_to_ir(statement, ir);
+            ast_to_ir(Rc::clone(&statement.value), ir);
             ir.push(IR::Case(
                 vec![MatchPattern::Val(vec![IR::Bool(true)])],
                 ir.len() + 2 + if statement2.is_some() { 1 } else { 0 },
             ));
-            ast_to_ir(statement1, ir);
+            ast_to_ir(Rc::clone(&statement1.value), ir);
             if let Some(statement2) = statement2 {
                 ir.push(IR::Jump(ir.len() + 2));
-                ast_to_ir(statement2, ir);
+                ast_to_ir(Rc::clone(&statement2.value), ir);
             }
         }
         StatementV::Out { expr, to } => {
-            ast_to_ir(expr, ir);
-            ir.push(IR::Output(to));
+            ast_to_ir(Rc::clone(&expr.value), ir);
+            ir.push(IR::Output(to.clone()));
         }
-        StatementV::In(streamer) => ir.push(IR::Input(streamer)),
-        StatementV::Jump(t) => ir.push(IR::Jump(if t { 0 } else { usize::MAX })),
+        StatementV::In(streamer) => ir.push(IR::Input(streamer.clone())),
+        StatementV::Jump(t) => ir.push(IR::Jump(if *t { 0 } else { usize::MAX })),
     }
 }
 #[allow(unused_variables, dead_code)]

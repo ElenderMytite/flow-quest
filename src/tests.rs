@@ -19,7 +19,7 @@ fn run_test_template_oneline(expr: String, expected_result: RefCell<Vec<VarV>>) 
     };
     print_tree(tree.clone().into(), 0);
     let mut ir = vec![];
-    ast_to_ir(tree, &mut ir);
+    ast_to_ir(tree.value, &mut ir);
     println!("{:?}", ir.iter().enumerate().collect::<Vec<_>>());
     let mut env = HashMap::new();
     execute(ir, &mut env);
