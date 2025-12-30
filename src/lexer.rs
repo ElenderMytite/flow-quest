@@ -3,69 +3,83 @@ use std::collections::HashMap;
 use crate::types::Token;
 
 pub fn tokenize_code(eq: String, keywords: &HashMap<String,u8>) -> Vec<Token> {
-    let mut chars: Vec<char> = eq.chars().rev().collect();
+    let chars: Vec<char> = eq.chars().collect();
+    let mut index: usize = 0;
     let mut tokens: Vec<Token> = Vec::new();
-    while chars.len() > 0 {
-        match chars.last().unwrap() {
-            '\n' | '\r' | '\t' | ' ' => {chars.pop().unwrap();},
+    let mut names: HashMap<String, usize> = HashMap::new();
+    while chars.len() > index {
+        println!("index: {}", index);
+        println!("char: {}", chars[index]);
+        // println!("tokens: {:?}", tokens);
+        match chars[index] {
+            '\n' | '\r' | '\t' | ' ' => {index += 1;},
 
-            val if val.is_ascii_punctuation() => tokens.append(&mut tokenize_symbol(&mut chars)),
+            val if val.is_ascii_punctuation() => tokens.append(&mut tokenize_symbol(&chars, &mut index)),
 
-            '0'..='9' => tokens.push(tokenize_number(&mut chars)),
+            '0'..='9' => tokens.push(tokenize_number(& chars,&mut index)),
 
-            '_' | 'A'..='Z' | 'a'..='z' => tokens.push(tokenize_name(&mut chars,keywords)),
+            '_' | 'A'..='Z' | 'a'..='z' => tokens.push(tokenize_name(&chars,&mut index,&mut names, keywords)),
             _ => println!("symbol not recognized: {}", chars.last().unwrap()),
         }
     }
     tokens.push(Token::EOF);
     tokens
 }
-fn tokenize_name(chars: &mut Vec<char>,keywords: &HashMap<String,u8>) -> Token {
-    let mut name: String = String::new();
+fn tokenize_name(chars: &Vec<char>,index: &mut usize, names: &mut HashMap<String,usize>, keywords: &HashMap<String,u8>) -> Token {
+    let mut name: Box<str> = Box::from("");
     loop {
-        if chars.len() > 0 {
-            if !chars.last().unwrap().is_alphanumeric() || chars.last().unwrap() == &'_' {
+        if chars.len() > *index {
+            if !chars[*index].is_alphanumeric() || chars.last().unwrap() == &'_' {
                 break;
             }
         } else {
             break;
         }
-        let i = chars.pop().unwrap();
-        name.push(i);
+        let i = chars[*index];
+        *index += 1;
+        name = format!("{}{}",name, &i.to_string()).into_boxed_str();
     }
-    match keywords.get(name.as_str()) {
+    match keywords.get(&name.to_string()) {
         Some(val) => Token::Mark(*val),
-        None => Token::Name(name),
+        None => {match names.get(&name.to_string()) {
+            Some(id) => Token::Name(id.clone()),
+            None => {
+                names.insert(name.to_string(), names.len());
+                Token::Name(names.len() - 1)
+            }}
+        }
     }
-
 }
-fn tokenize_number(chars: &mut Vec<char>) -> Token {
+fn tokenize_number(chars: &Vec<char>, index: &mut usize) -> Token {
     let mut number: String = String::new();
-    if chars.len() == 0 {
+    if chars.len() == *index {
         return Token::Number(0);
     }
     loop {
         if chars.len() > 0 {
-            if !chars.last().unwrap().is_numeric() {
+            if !chars[*index].is_numeric() {
                 break;
             }
         } else {
             break;
         }
-        let i = chars.pop().unwrap();
+        let i = chars[*index];
+        *index += 1;
         number.push(i);
     }
     Token::Number(number.parse().unwrap())
 }
-fn tokenize_symbol(chars: &mut Vec<char>,) -> Vec<Token> {
+fn tokenize_symbol(chars: &Vec<char>,index: &mut usize) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
     let mut symbol_sequence:String = String::new();
-    while chars.len() > 0 {
-        if !chars.last().unwrap().is_ascii_punctuation()
+    while chars.len() > *index {
+        if !chars[*index].is_ascii_punctuation()
         {
             break;
         }
-        let i = chars.pop().unwrap();
+        let i = chars[*index];
+        println!("symbol: {}", i);
+        *index += 1;
         if let ',' | '.' = i {
             tokens.push(Token::Dot(i == ','));
             if symbol_sequence.len() == 0 {
@@ -75,7 +89,8 @@ fn tokenize_symbol(chars: &mut Vec<char>,) -> Vec<Token> {
         }
         symbol_sequence.push(i);
     }
-    tokens.insert(0,match symbol_sequence.as_str() {
+    println!("symbol sequence: {}", symbol_sequence);
+    tokens.push(match symbol_sequence.as_str() {
 
         "(" => Token::Brackets {id: 1,  is_opened: true},
         ")" => Token::Brackets {id: 1, is_opened: false},
@@ -128,9 +143,9 @@ fn tokenize_symbol(chars: &mut Vec<char>,) -> Vec<Token> {
         "%" => Token::Sign(5),
         
         _ => panic!(
-            "unexpected symbol sequence: {}",
+            "unexpected symbol sequence: \"{}\"",
             symbol_sequence
         ),
     });
-    tokens
+    tokens.iter().rev().cloned().collect()
 }

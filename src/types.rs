@@ -2,45 +2,20 @@ use core::ops::{Add, Div, Mul, Not, Sub, BitOr, BitAnd};
 use std::cell::RefCell;
 use std::cmp::{Eq, Ord, PartialEq, PartialOrd};
 use std::ops::Rem;
-use std::rc::Rc;
 use crate::ir::IR;
 #[derive(Debug, Clone, PartialEq)]
-pub struct Statement {
-    pub value: Rc<StatementV>,
-}
-impl Statement {
-    pub fn new(value: Rc<StatementV>) -> Self {
-        Self { value }
-    }
-    pub fn get_ast(&self) -> StatementV {
-        self.value.as_ref().clone()
-    }
-}
-impl Into<Statement> for Rc<StatementV> {
-    fn into(self) -> Statement {
-        Statement::new(self)
-    }
-}
-impl From<Statement> for Rc<StatementV> {
-    fn from(statement: Statement) -> Rc<StatementV> {
-        statement.value
-    }
-}
-#[derive(Debug, Clone, PartialEq)]
-pub enum StatementV {
-    Block(Vec<Statement>, BlockV),
-    Define { link: Statement, like: String },
-    Call(Statement, Statement),
-    Set { name: String, value: Statement },
+pub enum Statement {
+    Block(Vec<Box<Statement>>, BlockType),
+    Set { name: usize, value: Box<Statement> },
     Nil,
-    Name(String),
+    Name(usize),
     Bool(bool),
     Number(isize),
-    Comparsion(ComparsionV, Statement, Statement),
-    OperationBool(ActionV, Statement, Option<Statement>),
-    OperationNumder(ActionV, Statement, Statement),
-    If(Statement, Statement, Option<Statement>),
-    Out { expr: Statement, to: RefCell<FlowListener> },
+    Comparsion(ComparsionV, Box<Statement>, Box<Statement>),
+    OperationBool(ActionV, Box<Statement>, Option<Box<Statement>>),
+    OperationNumder(ActionV, Box<Statement>, Box<Statement>),
+    If(Box<Statement>, Box<Statement>, Option<Box<Statement>>),
+    Out { expr: Box<Statement>, to: RefCell<FlowListener> },
     In(RefCell<FlowStreamer>),
     Jump(bool),
 }
@@ -65,7 +40,7 @@ pub enum ComparsionV {
     GreaterOrEqual,
 }
 #[derive(Debug, Clone, PartialEq)]
-pub enum BlockV {
+pub enum BlockType {
     Evaluate,
     Draft,
     Storage,
@@ -189,30 +164,30 @@ impl BitAnd for VarV {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Token {
     Brackets { id: u8, is_opened: bool },
     Sign(u8),
     Bool(bool),
     Number(isize),
-    Name(String),
+    Name(usize),
     Mark(u8),
     Comparsion(u8),
     Dot(bool),
     EOF,
 }
 impl Token {
-    pub fn get_string_from_name(&self) -> String {
-        match &self {
-            Token::Name(name) => name.clone(),
-            _ => panic!("expected name"),
-        }
-    }
     pub fn is_operation(&self) -> bool {
         //print!("{:?}", self);
         match &self {
             Token::Mark(1 | 7 | 9) | Token::Comparsion(_) | Token::Sign(_) => true,
             _ => false,
+        }
+    }
+    pub fn name_id(&self) -> usize {
+        match &self {
+            Token::Name(id) => *id,
+            _ => panic!("expected name token"),
         }
     }
     pub fn get_operation_priorety(&self) -> u8 {
@@ -258,8 +233,6 @@ impl Token {
 #[derive(Debug, Clone, PartialEq)]
 pub enum FlowListener{
     Console,
-    Asserter(RefCell<Vec<VarV>>),
-    None
 }
 impl FlowListener {
     pub fn get(&self,val: VarV) -> bool {
@@ -273,14 +246,11 @@ impl FlowListener {
                 }
                 true
             }
-            FlowListener::Asserter(expected_values) => {
-                expected_values.borrow_mut().remove(0) == val 
-            }
-            FlowListener::None => true,
         }
     }
 }
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum FlowStreamer{
     Console,
     None
