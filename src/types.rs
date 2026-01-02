@@ -38,24 +38,11 @@ pub enum ComparsionV {
     LessOrEqual,
     GreaterOrEqual,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VarV {
     Tuple(Vec<VarV>),
     Num(isize),
     Bool(bool),
-}
-impl VarV {
-}
-impl Eq for VarV {}
-impl PartialEq for VarV {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (VarV::Num(a), VarV::Num(b)) => a == b,
-            (VarV::Bool(a), VarV::Bool(b)) => a == b,
-            (VarV::Tuple(t1), VarV::Tuple(t2)) => t1 == t2,
-            _ => false,
-        }
-    }
 }
 impl Ord for VarV {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {

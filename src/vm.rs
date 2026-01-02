@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::ir::{MatchPattern, IR};
 use crate::types::{ActionV, VarV};
 
-pub fn execute(ir: Vec<IR>, heap: &mut HashMap<usize, VarV>) -> Vec<VarV> {
+pub fn execute(ir: Vec<IR>, heap: &mut HashMap<usize, VarV>) -> VarV {
     let mut stack: Vec<VarV> = Vec::new();
     let mut index = 0;
     while ir.len() > index {
@@ -40,7 +40,7 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<usize, VarV>) -> Vec<VarV> {
                 }
             }
             IR::Efine(vec) => {
-                stack.append(&mut execute(vec.clone(), heap));
+                stack.append(&mut unpack(execute(vec.clone(), heap)));
             }
             IR::Case(patterns, gt) => {
                 if patterns.len() > stack.len() || gt > &ir.len() {
@@ -56,7 +56,7 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<usize, VarV>) -> Vec<VarV> {
                         }
                         MatchPattern::Val(val) => {
                             if stack.pop().unwrap()
-                                != return_vector_to_tuple(execute(val.clone(), heap))
+                                != pack(unpack(execute(val.clone(), heap)))
                             {
                                 is_matching = false;
                                 break;
@@ -82,16 +82,21 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<usize, VarV>) -> Vec<VarV> {
         }
         index += 1;
     }
-    stack
+    pack(stack)
 }
-fn return_vector_to_tuple(v: Vec<VarV>) -> VarV {
+fn pack(v: Vec<VarV>) -> VarV {
     match v.len() {
         0 => VarV::Tuple(Vec::new()),
         1 => v[0].clone(),
         _ => VarV::Tuple(v),
     }
 }
-
+fn unpack(v: VarV) -> Vec<VarV> {
+    match v {
+        VarV::Tuple(vec) => vec,
+        _ => vec![v],
+    }
+}
 fn do_operation(stack: &mut Vec<VarV>, operation: IR)
 {
     let a = stack.pop().unwrap();

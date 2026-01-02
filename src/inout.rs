@@ -8,13 +8,10 @@ use crate::types::Statement;
 #[derive(Debug)]
 pub struct Vocabulary {
     pub keywords: HashMap<String, u8>,
-    #[allow(dead_code)]
-    pub libwords: HashMap<String, ModulePiece>,
 }
 #[derive(Debug, Serialize, Deserialize)]
 struct VocabularyBuilder {
     keywords: HashMap<String, u8>,
-    libwords: HashMap<String, ModulePiece>,
     parent: Option<String>,
 }
 impl From<VocabularyBuilder> for Vocabulary {
@@ -22,36 +19,24 @@ impl From<VocabularyBuilder> for Vocabulary {
         match vb.parent {
             None => Vocabulary {
                 keywords: vb.keywords,
-                libwords: vb.libwords,
             },
             Some(p) => {
                 let parent = read_json(p + ".json");
                 let mut keywords = parent.keywords;
-                let mut libwords = parent.libwords;
                 for (k, v) in vb.keywords {
                     keywords.insert(k, v);
                 }
-                for (k, v) in vb.libwords {
-                    libwords.insert(k, v);
-                }
-                println!("{:#?}", keywords);
-                Vocabulary { keywords, libwords }
+                Vocabulary {keywords}
             }
         }
     }
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ModulePiece {
-    TransFormer,
-    Streamer,
-    Listener,
-    Condition,
 }
 pub fn read_json(path: String) -> Vocabulary {
     let file = File::open(path).expect("cannot open file");
     let builder: VocabularyBuilder = serde_json::from_reader(file).expect("cannot read json");
     Vocabulary::from(builder)
 }
+#[allow(dead_code)]
 pub fn print_tree(node: Statement, depth: usize) {
     let indent = "\t".repeat(depth);
     match node {

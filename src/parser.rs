@@ -3,8 +3,8 @@ use crate::types::{FlowListener, FlowStreamer};
 use core::panic;
 use std::cell::RefCell;
 pub fn parse_program(tokens: &Vec<Token>, listener: &RefCell<FlowListener>) -> Statement {
-    println!("parsing program...");
-    println!("tokens: {:?}", tokens);
+    // println!("parsing program...");
+    // println!("tokens: {:?}", tokens);
     parse_block(tokens, &mut 0, Token::EOF, listener)
 }
 pub fn parse_block(
@@ -26,7 +26,7 @@ pub fn parse_block(
 }
 fn parse_statement(tokens: &Vec<Token>, index: &mut usize, listener: &RefCell<FlowListener>) -> Statement {
     *index += 1;
-    match tokens[*index - 1] {
+    let result = match tokens[*index - 1] {
         Token::Mark(id) => match id {
             8 => parse_if_statement(tokens, index, listener),
             3 => {
@@ -41,6 +41,7 @@ fn parse_statement(tokens: &Vec<Token>, index: &mut usize, listener: &RefCell<Fl
                     Token::Mark(18) => false,
                     _ => panic!("expected again or stop"),
                 };
+                *index += 1;
                 Statement::Jump(repeat)
             }
             19 => Statement::In(RefCell::new(FlowStreamer::None)),
@@ -60,7 +61,13 @@ fn parse_statement(tokens: &Vec<Token>, index: &mut usize, listener: &RefCell<Fl
             *index -= 1;
             parse_expression(tokens, index,1, listener)
         }
+    };
+    if tokens.len() > *index {
+        if let Token::Dot(true) = tokens[*index] {
+            *index += 1;
+        }
     }
+    result
 }
 fn parse_if_statement(
     tokens: &Vec<Token>,

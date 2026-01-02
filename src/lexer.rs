@@ -8,9 +8,6 @@ pub fn tokenize_code(eq: String, keywords: &HashMap<String,u8>) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
     let mut names: HashMap<String, usize> = HashMap::new();
     while chars.len() > index {
-        println!("index: {}", index);
-        println!("char: {}", chars[index]);
-        // println!("tokens: {:?}", tokens);
         match chars[index] {
             '\n' | '\r' | '\t' | ' ' => {index += 1;},
 
@@ -78,7 +75,6 @@ fn tokenize_symbol(chars: &Vec<char>,index: &mut usize) -> Vec<Token> {
             break;
         }
         let i = chars[*index];
-        println!("symbol: {}", i);
         *index += 1;
         if let ',' | '.' = i {
             tokens.push(Token::Dot(i == ','));
@@ -89,7 +85,6 @@ fn tokenize_symbol(chars: &Vec<char>,index: &mut usize) -> Vec<Token> {
         }
         symbol_sequence.push(i);
     }
-    println!("symbol sequence: {}", symbol_sequence);
     tokens.push(match symbol_sequence.as_str() {
 
         "(" => Token::Brackets {id: 1,  is_opened: true},
