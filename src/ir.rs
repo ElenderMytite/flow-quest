@@ -1,6 +1,5 @@
-use crate::types::{ActionV, BlockType, ComparsionV, Statement};
+use crate::types::{ActionV,ComparsionV, Statement};
 use crate::types::{FlowListener, FlowStreamer};
-use core::panic;
 use std::cell::RefCell;
 #[derive(Debug, Clone)]
 #[allow(unused_variables, dead_code)]
@@ -47,22 +46,12 @@ pub enum IR {
 }
 pub fn ast_to_ir(ast_node: &Statement, ir: &mut Vec<IR>) {
     match ast_node {
-        Statement::Block(vec, block_type) => match block_type {
-            BlockType::Evaluate => {
-                let mut ir_block: Vec<IR> = Vec::new();
-                for node in vec {
-                    ast_to_ir(&node, &mut ir_block);
-                }
-                ir.push(IR::Efine(ir_block));
+        Statement::Block(vec) =>{
+            let mut ir_block: Vec<IR> = Vec::new();
+            for node in vec {
+                ast_to_ir(&node, &mut ir_block);
             }
-            BlockType::Draft => {
-                let mut ir_block: Vec<IR> = Vec::new();
-                for node in vec {
-                    ast_to_ir(&node, &mut ir_block);
-                }
-                ir.push(IR::Code(ir_block));
-            }
-            _ => panic!("Block type {:?} not implemented yet", block_type),
+            ir.push(IR::Efine(ir_block));
         },
         
         Statement::Set { name, value } => {

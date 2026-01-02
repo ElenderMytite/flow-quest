@@ -5,7 +5,7 @@ use std::ops::Rem;
 use crate::ir::IR;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
-    Block(Vec<Box<Statement>>, BlockType),
+    Block(Vec<Box<Statement>>),
     Set { name: usize, value: Box<Statement> },
     Nil,
     Name(usize),
@@ -38,12 +38,6 @@ pub enum ComparsionV {
     NotEqual,
     LessOrEqual,
     GreaterOrEqual,
-}
-#[derive(Debug, Clone, PartialEq)]
-pub enum BlockType {
-    Evaluate,
-    Draft,
-    Storage,
 }
 #[derive(Debug, Clone)]
 pub enum VarV {

@@ -70,7 +70,7 @@ pub fn print_tree(node: Statement, depth: usize) {
             }
         }
         Statement::Bool(val) => println!("{}Boolean: {}", indent, val),
-        Statement::Nil => println!("{}Nil", indent),
+        Statement::Nil => (),
 
         Statement::If(condition, if_, else_) => {
             println!("{}If: ", indent,);
@@ -88,13 +88,8 @@ pub fn print_tree(node: Statement, depth: usize) {
             print_tree(*left, depth + 1);
             print_tree(*right, depth + 1);
         }
-        Statement::Block(vec, block_type) => {
-            let capt: String = match block_type {
-                crate::types::BlockType::Evaluate => String::from("Evaluate"),
-                crate::types::BlockType::Draft => String::from("Draft"),
-                crate::types::BlockType::Storage => String::from("Storage"),
-            };
-            println!("{}{}:", indent, capt);
+        Statement::Block(vec) => {
+            println!("{}Block:", indent);
             for stmt in vec {
                 print_tree(*stmt, depth + 1);
             }

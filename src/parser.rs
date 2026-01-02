@@ -1,91 +1,28 @@
-use crate::types::{ActionV, BlockType, Statement, Token};
+use crate::types::{ActionV,Statement, Token};
 use crate::types::{FlowListener, FlowStreamer};
 use core::panic;
 use std::cell::RefCell;
-pub fn parse_program<'a>(tokens: &Vec<Token>, listener: &RefCell<FlowListener>) -> Statement {
+pub fn parse_program(tokens: &Vec<Token>, listener: &RefCell<FlowListener>) -> Statement {
     println!("parsing program...");
     println!("tokens: {:?}", tokens);
-    Statement::Block(
-        get_statements_of_block(&parse_block(tokens, &mut 0, Token::EOF, listener))
-        .iter()
-        .filter(|s| ***s != Statement::Nil).cloned().collect(),
-        BlockType::Evaluate,
-    )
+    parse_block(tokens, &mut 0, Token::EOF, listener)
 }
-fn get_statements_of_block(expr: &Statement) -> Vec<Box<Statement>> {
-    match expr {
-        Statement::Block(blocks, _) => blocks.clone(),
-        _ => vec![],
-    }
-}
-pub fn parse_block<'a>(
-    tokens: &'a Vec<Token>,
+pub fn parse_block(
+    tokens: &Vec<Token>,
     index: &mut usize,
     closing_brace: Token,
-    listener: &'a RefCell<FlowListener>,
+    listener: &RefCell<FlowListener>,
 ) -> Statement {
-    let mut clmn: Token;
-    let mut stmts: Vec<Box<Statement>> = vec![];
-    stmts.push(Box::from(parse_statement(tokens, index, listener)));
-    if tokens.len() > *index + 2{
-        clmn = tokens[*index]; 
-        *index += 1;
-        if let Token::Dot(true) = clmn {
-        } else if let Token::Dot(false) = clmn {
-            *index += 1;
-            if closing_brace == tokens[*index] {
-                *index += 1;
-                return Statement::Block(stmts, BlockType::Draft);
-            }
-        } else {
-            panic!("expected comma or dot; found: {:?}. tokens: {:?}.", clmn, tokens);
-        }
-    } else if tokens.len() >*index {
-        if let Token::Dot(false) = tokens[*index] {
-            *index += 1;
-            if closing_brace == tokens[*index] {
-                *index += 1;
-            } else {
-                panic!(
-                    "expected closing brace: {:?}; found: {:?}",
-                    closing_brace,
-                    tokens[*index]
-                );
-            }
-            return *stmts[0].clone();
-        } else {
-            panic!("expected dot; found: {:?}", tokens[*index]);
-        }
+    let mut statements: Vec<Box<Statement>> = Vec::new();
+    while tokens.len() > *index && tokens[*index] != closing_brace && tokens[*index] != Token::EOF {
+        let stmt: Statement = parse_statement(tokens, index, listener);
+        statements.push(Box::from(stmt));
     }
-    else {
-        return Statement::Nil;
+    if tokens.len() == *index || tokens[*index] != closing_brace {
+        panic!("expected closing brace: {:?}, found: {:?}", closing_brace, tokens.get(*index));
     }
-    while let Token::Dot(true) = clmn {
-        if let Token::Dot(false) = tokens[*index] {
-            *index += 1;
-            if closing_brace == tokens[*index] {
-                *index += 1;
-                break;
-            } else {
-                panic!(
-                    "expected closing brace: {:?}; found: {:?}",
-                    closing_brace,
-                    tokens[*index]
-                );
-            }
-        }
-        let stmt = parse_statement(tokens,index, listener);
-        stmts.push(Box::from(stmt));
-        if *index >= tokens.len() {
-            break;
-        }
-        if let Token::Dot(true) = tokens[*index] {
-            clmn = tokens[*index];
-            *index += 1;
-        }
-    }
-    
-    Statement::Block(stmts, BlockType::Evaluate)
+    *index += 1;
+    Statement::Block(statements)
 }
 fn parse_statement(tokens: &Vec<Token>, index: &mut usize, listener: &RefCell<FlowListener>) -> Statement {
     *index += 1;
@@ -119,6 +56,7 @@ fn parse_statement(tokens: &Vec<Token>, index: &mut usize, listener: &RefCell<Fl
             }
         },
         _ => {
+            *index -= 1;
             parse_expression(tokens, index,1, listener)
         }
     }
@@ -145,7 +83,7 @@ fn parse_expression(
     min_priority: u8,
     listener: &RefCell<FlowListener>,
 ) -> Statement {
-    if tokens.len() == *index {
+    if tokens.len() <= *index {
         return Statement::Nil;
     }
     let mut left_expr: Statement = parse_primary(tokens, index, listener);
@@ -187,62 +125,7 @@ fn parse_primary<'a>(tokens: &Vec<Token>,index: &mut usize, listener: &RefCell<F
     let tk: Token = tokens[*index];
     *index += 1;
     match tk {
-        Token::Brackets { id, is_opened } => {
-            if is_opened {
-                match id {
-                    1 => {
-                        let expr: Statement = parse_statement(tokens, index, listener);
-                        if let Token::Brackets {
-                            id: 1,
-                            is_opened: false,
-                        } = tokens[*index]
-                        {
-                            *index += 1;
-                        } else {
-                            println!("{:?}", tokens);
-                            panic!("Mismatched ) paren");
-                        }
-                        expr
-                    }
-                    2 => {
-                        let expr: Statement = parse_block(
-                            tokens,
-                            index,
-                            Token::Brackets {
-                                id: 2,
-                                is_opened: false,
-                            },
-                            listener,
-                        );
-                        Statement::Block(
-                            get_statements_of_block(&expr),
-                            BlockType::Storage,
-                        )
-                    }
-                    3 => {
-                        let expr: Statement = parse_block(
-                            tokens,
-                            index,
-                            Token::Brackets {
-                                id: 3,
-                                is_opened: false,
-                            },
-                            listener,
-                        );
-                        Statement::Block(
-                            get_statements_of_block(&expr),
-                            BlockType::Evaluate,
-                        )
-                    }
-                    4 => {
-                        parse_block(tokens,index, Token::Brackets { id: 4, is_opened: false }, listener)
-                    }    
-                    _ => panic!("unexpected brace id"),
-                }
-            } else {
-                panic!("closing paren found while no opening was: {:?}", tk)
-            }
-        }
+        Token::Brackets { id, is_opened } => parse_brackets(tokens, index, id, is_opened, listener),
         Token::Mark(1) | Token::Sign(2) => {
             let expr: Statement = parse_expression(tokens, index, 5, listener);
             Statement::OperationBool(ActionV::Not, Box::from(expr), None)
@@ -251,5 +134,20 @@ fn parse_primary<'a>(tokens: &Vec<Token>,index: &mut usize, listener: &RefCell<F
         Token::Bool(val) => Statement::Bool(val),
         Token::Name(name) => Statement::Name(name),
         _ => Statement::Nil,
+    }
+}
+fn parse_brackets(
+    tokens: &Vec<Token>,
+    index: &mut usize,
+    id: u8,
+    is_opened: bool,
+    listener: &RefCell<FlowListener>,
+) -> Statement {
+    if is_opened {
+        let closing_brace = Token::Brackets { id, is_opened: false };
+        let block = parse_block(tokens, index, closing_brace, listener);
+        block
+    } else {
+        panic!("unexpected closing bracket");
     }
 }
