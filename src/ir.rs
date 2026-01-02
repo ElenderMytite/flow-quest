@@ -1,21 +1,17 @@
-use crate::types::{ActionV, BlockV, ComparsionV, Statement, StatementV};
+use crate::types::{ActionV,ComparsionV, Statement};
 use crate::types::{FlowListener, FlowStreamer};
-use core::panic;
 use std::cell::RefCell;
-use std::rc::Rc;
 #[derive(Debug, Clone)]
 #[allow(unused_variables, dead_code)]
 pub enum MatchPattern {
-    Var(String),
+    Var(usize),
     Val(Vec<IR>),
     Unused,
 }
-#[allow(unused_variables, dead_code)]
 #[derive(Debug, Clone)]
 pub enum IR {
     Num(isize),
     Bool(bool),
-    Code(Vec<IR>),
 
     Nil,
 
@@ -32,13 +28,10 @@ pub enum IR {
     LsEql,
     GtEql,
 
-    Store(String),
-    Load(String),
+    Store(usize),
+    Load(usize),
 
     Jump(usize),
-
-    Define(String, Vec<IR>),
-    Exe(String),
     Efine(Vec<IR>),
 
     Input(RefCell<FlowStreamer>),
@@ -46,50 +39,29 @@ pub enum IR {
 
     Case(Vec<MatchPattern>, usize),
 }
-pub fn ast_to_ir(ast_node: Rc<StatementV>, ir: &mut Vec<IR>) {
-    match ast_node.as_ref() {
-        StatementV::Block(vec, block_type) => match block_type {
-            BlockV::Evaluate => {
-                let mut ir_block: Vec<IR> = Vec::new();
-                for node in vec {
-                    ast_to_ir(Rc::clone(&Rc::clone(&node.value)), &mut ir_block);
-                }
-                ir.push(IR::Efine(ir_block));
+pub fn ast_to_ir(ast_node: &Statement, ir: &mut Vec<IR>) {
+    match ast_node {
+        Statement::Block(vec) =>{
+            let mut ir_block: Vec<IR> = Vec::new();
+            for node in vec {
+                ast_to_ir(&node, &mut ir_block);
             }
-            BlockV::Draft => {
-                let mut ir_block: Vec<IR> = Vec::new();
-                for node in vec {
-                    ast_to_ir(Rc::clone(&node.value), &mut ir_block);
-                }
-                ir.push(IR::Code(ir_block));
-            }
-            _ => panic!("Block type {:?} not implemented yet", block_type),
+            ir.push(IR::Efine(ir_block));
         },
-        StatementV::Define { link, like } => {
-            ast_to_ir(Rc::clone(&link.value), ir);
-            ir.push(IR::Store(like.clone()));
+        
+        Statement::Set { name, value } => {
+            ast_to_ir(value, ir);
+            ir.push(IR::Store(*name));
         }
-        StatementV::Call(transformer, statement) => {
-            ast_to_ir(Rc::clone(&statement.value), ir);
-            match transformer.get_ast() {
-                StatementV::Name(name) => ir.push(IR::Exe(name)),
-                value => ir.push(IR::Efine({let mut v =vec![]; 
-                ast_to_ir(Rc::new(value),&mut v); v})),
-            }
-        }
-        StatementV::Set { name, value } => {
-            ast_to_ir(Rc::clone(&value.value), ir);
-            ir.push(IR::Store(name.clone()));
-        }
-        StatementV::Nil => ir.push(IR::Nil),
-        StatementV::Name(s) => {
+        Statement::Nil => ir.push(IR::Nil),
+        Statement::Name(s) => {
             ir.push(IR::Load(s.clone()));
         }
-        StatementV::Bool(v) => ir.push(IR::Bool(*v)),
-        StatementV::Number(v) => ir.push(IR::Num(*v)),
-        StatementV::Comparsion(comparsion_type, statement, statement1) => {
-            ast_to_ir(Rc::clone(&statement.value), ir);
-            ast_to_ir(Rc::clone(&statement1.value), ir);
+        Statement::Bool(v) => ir.push(IR::Bool(*v)),
+        Statement::Number(v) => ir.push(IR::Num(*v)),
+        Statement::Comparsion(comparsion_type, statement, statement1) => {
+            ast_to_ir(statement, ir);
+            ast_to_ir(statement1, ir);
             ir.push(match comparsion_type {
                 ComparsionV::Equal => IR::Eql,
                 ComparsionV::NotEqual => IR::NEql,
@@ -99,65 +71,41 @@ pub fn ast_to_ir(ast_node: Rc<StatementV>, ir: &mut Vec<IR>) {
                 ComparsionV::GreaterOrEqual => IR::GtEql,
             });
         }
-        StatementV::OperationBool(action_type, statement, statement1) => {
-            ast_to_ir(Rc::clone(&statement.value), ir);
+        Statement::OperationBool(action_type, statement, statement1) => {
+            ast_to_ir(&statement, ir);
             if let Some(statement1) = statement1 {
-                ast_to_ir(Rc::clone(&statement1.value), ir);
+                ast_to_ir(&statement1, ir);
             }
             ir.push(match action_type {
                 ActionV::Not => IR::Not,
                 ActionV::And => IR::And,
                 ActionV::Or => IR::Or,
-                _ => todo!(),
+                _ => {println!("Invalid boolean operation in AST to IR conversion"); IR::Nil},
             });
         }
-        StatementV::OperationNumder(action_type, statement, statement1) => {
-            ast_to_ir(Rc::clone(&statement.value), ir);
-            ast_to_ir(Rc::clone(&statement1.value), ir);
+        
+        Statement::OperationNumder(action_type, statement, statement1) => {
+            ast_to_ir(&statement, ir);
+            ast_to_ir(&statement1, ir);
             ir.push(IR::BinExpr(action_type.clone()));
         }
-        StatementV::If(statement, statement1, statement2) => {
-            ast_to_ir(Rc::clone(&statement.value), ir);
+        Statement::If(statement, statement1, statement2) => {
+            ast_to_ir(&statement, ir);
             ir.push(IR::Case(
-                vec![MatchPattern::Val(vec![IR::Bool(true)])],
-                ir.len() + 2 + if statement2.is_some() { 1 } else { 0 },
+                vec![MatchPattern::Val(vec![IR::Bool(false)])],
+                ir.len() + 2 + if statement2.is_some() { 1 } else { 0 }, // jump over the "then" block and optional "else" block
             ));
-            ast_to_ir(Rc::clone(&statement1.value), ir);
+            ast_to_ir(&statement1, ir);
             if let Some(statement2) = statement2 {
-                ir.push(IR::Jump(ir.len() + 2));
-                ast_to_ir(Rc::clone(&statement2.value), ir);
+                ir.push(IR::Jump(ir.len() + 2)); // jump over the "else" block
+                ast_to_ir(&statement2, ir);
             }
         }
-        StatementV::Out { expr, to } => {
-            ast_to_ir(Rc::clone(&expr.value), ir);
+        Statement::Out { expr, to } => {
+            ast_to_ir(&expr, ir);
             ir.push(IR::Output(to.clone()));
         }
-        StatementV::In(streamer) => ir.push(IR::Input(streamer.clone())),
-        StatementV::Jump(t) => ir.push(IR::Jump(if *t { 0 } else { usize::MAX })),
+        Statement::In(streamer) => ir.push(IR::Input(streamer.clone())),
+        Statement::Jump(t) => ir.push(IR::Jump(if *t { 0 } else { usize::MAX })),
     }
-}
-#[allow(unused_variables, dead_code)]
-pub fn generate_bytecode(ast_node: Statement) -> Vec<u8> {
-    let mut code: Vec<u8> = Vec::new();
-    match ast_node.get_ast() {
-        StatementV::Block(statements, block_v) => todo!(),
-        StatementV::Define { link, like } => todo!(),
-        StatementV::Call(statement, statement1) => todo!(),
-        StatementV::Set { name, value } => todo!(),
-        StatementV::Nil => (),
-        StatementV::Name(n) => todo!(),
-        StatementV::Bool(b) => {
-            code.push(0);
-            code.push(if b { 1 } else { 0 });
-        },
-        StatementV::Number(n) => {
-            code.push(0);
-            let bytes = n.to_le_bytes();
-            code.extend_from_slice(&bytes);
-        },
-        StatementV::Comparsion(comparsion_v, statement, statement1) => todo!(),
-        _ => (),
-    }
-    code.push(255);
-    code
 }

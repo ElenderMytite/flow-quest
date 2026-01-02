@@ -1,258 +1,161 @@
-use crate::types::Statement;
-use crate::types::{ActionV, BlockV, StatementV, Token};
+use crate::types::{ActionV,Statement, Token};
 use crate::types::{FlowListener, FlowStreamer};
 use core::panic;
 use std::cell::RefCell;
-use std::rc::Rc;
-
-fn get_data_from_chain(
-    tokens: &mut Vec<Token>,
-    listener: &RefCell<FlowListener>,
-) -> Rc<StatementV> {
-    if *tokens.last().unwrap() == Token::Mark(14) {
-        tokens.pop().unwrap();
-        return parse_expression(tokens, 1, listener);
-    } else {
-        panic!(
-            "expected -- while getting data from chain; found: {:?}",
-            tokens.last().unwrap()
-        )
-    }
-}
-pub fn parse_program(tokens: &mut Vec<Token>, listener: &RefCell<FlowListener>) -> Rc<StatementV> {
-    tokens.reverse();
-    Rc::new(StatementV::Block(
-        get_statements_of_block(parse_block(tokens, Token::EOF, listener)),
-        BlockV::Evaluate,
-    ))
-}
-fn get_statements_of_block(expr: Rc<StatementV>) -> Vec<Statement> {
-    match expr.as_ref() {
-        StatementV::Block(blocks, _) => blocks.clone(),
-        v => vec![Statement::new(Rc::new(v.clone()))],
-    }
+pub fn parse_program(tokens: &Vec<Token>, listener: &RefCell<FlowListener>) -> Statement {
+    // println!("parsing program...");
+    // println!("tokens: {:?}", tokens);
+    parse_block(tokens, &mut 0, Token::EOF, listener)
 }
 pub fn parse_block(
-    tokens: &mut Vec<Token>,
+    tokens: &Vec<Token>,
+    index: &mut usize,
     closing_brace: Token,
     listener: &RefCell<FlowListener>,
-) -> Rc<StatementV> {
-    let mut clmn: Token;
-    let mut stmts: Vec<Statement> = vec![];
-    stmts.push(parse_statement(tokens, listener).into());
-    if tokens.len() > 2 {
-        clmn = tokens.pop().unwrap();
-        if let Token::Dot(true) = clmn {
-        } else if let Token::Dot(false) = clmn {
-            tokens.pop().unwrap();
-            if closing_brace == *tokens.last().unwrap() {
-                tokens.pop().unwrap();
-                return Rc::new(StatementV::Block(stmts, BlockV::Draft));
-            }
-        } else {
-            panic!("expected comma or dot; found: {:?}", clmn)
-        }
-    } else {
-        if let Token::Dot(false) = tokens.last().unwrap() {
-            tokens.pop().unwrap();
-            if closing_brace == *tokens.last().unwrap() {
-                tokens.pop().unwrap();
-            } else {
-                panic!(
-                    "expected closing brace: {:?}; found: {:?}",
-                    closing_brace,
-                    tokens.last().unwrap()
-                );
-            }
-            return stmts[0].value.clone();
-        } else {
-            panic!("expected dot; found: {:?}", tokens.last().unwrap());
-        }
+) -> Statement {
+    let mut statements: Vec<Box<Statement>> = Vec::new();
+    while tokens.len() > *index && tokens[*index] != closing_brace && tokens[*index] != Token::EOF {
+        let stmt: Statement = parse_statement(tokens, index, listener);
+        statements.push(Box::from(stmt));
     }
-    while let Token::Dot(true) = clmn {
-        if let Token::Dot(false) = tokens.last().unwrap() {
-            tokens.pop().unwrap();
-            if closing_brace == *tokens.last().unwrap() {
-                tokens.pop().unwrap();
-                break;
-            } else {
-                panic!(
-                    "expected closing brace: {:?}; found: {:?}",
-                    closing_brace,
-                    tokens.last().unwrap()
-                );
-            }
-        }
-        let stmt = parse_statement(tokens, listener);
-        stmts.push(stmt.into());
-        if let Token::Dot(true) = tokens.last().unwrap() {
-            clmn = tokens.pop().unwrap();
-        }
+    if tokens.len() == *index || tokens[*index] != closing_brace {
+        panic!("expected closing brace: {:?}, found: {:?}", closing_brace, tokens.get(*index));
     }
-    Rc::new(StatementV::Block(stmts, BlockV::Draft))
+    *index += 1;
+    Statement::Block(statements)
 }
-fn parse_statement(tokens: &mut Vec<Token>, listener: &RefCell<FlowListener>) -> Rc<StatementV> {
-    match tokens.pop().unwrap().clone() {
+fn parse_statement(tokens: &Vec<Token>, index: &mut usize, listener: &RefCell<FlowListener>) -> Statement {
+    *index += 1;
+    let result = match tokens[*index - 1] {
         Token::Mark(id) => match id {
-            8 => parse_if_statement(tokens, listener),
+            8 => parse_if_statement(tokens, index, listener),
             3 => {
-                let name = tokens.pop().unwrap().get_string_from_name();
-                let value: Statement = get_data_from_chain(tokens, listener).into();
-                Rc::new(StatementV::Set { name, value })
+                let name = tokens[*index].name_id();
+                *index += 1;
+                let value: Box<Statement> = Box::from(parse_expression(tokens, index,1,listener));
+                Statement::Set{ name, value }
             }
             16 => {
-                let repeat = match tokens.pop().unwrap() {
+                let repeat = match tokens[*index] {
                     Token::Mark(17) => true,
                     Token::Mark(18) => false,
                     _ => panic!("expected again or stop"),
                 };
-                Rc::new(StatementV::Jump(repeat))
+                *index += 1;
+                Statement::Jump(repeat)
             }
-            19 => Rc::new(StatementV::In(RefCell::new(FlowStreamer::None))),
+            19 => Statement::In(RefCell::new(FlowStreamer::None)),
             20 => {
-                let to_out: Rc<StatementV> = parse_statement(tokens, listener);
-                Rc::new(StatementV::Out {
-                    expr: to_out.into(),
+                let to_out: Statement = parse_statement(tokens,index,  listener);
+                Statement::Out {
+                    expr: Box::from(to_out),
                     to: listener.clone(),
-                })
+                }
             }
-            val => {
-                tokens.push(Token::Mark(val));
-                parse_expression(tokens, 1, listener)
+            _ => {
+                *index -= 1;
+                parse_expression(tokens, index, 1, listener)
             }
         },
-        val => {
-            tokens.push(val);
-            parse_expression(tokens, 1, listener)
+        _ => {
+            *index -= 1;
+            parse_expression(tokens, index,1, listener)
+        }
+    };
+    if tokens.len() > *index {
+        if let Token::Dot(true) = tokens[*index] {
+            *index += 1;
         }
     }
+    result
 }
 fn parse_if_statement(
-    tokens: &mut Vec<Token>,
+    tokens: &Vec<Token>,
+    index: &mut usize,
     listener: &RefCell<FlowListener>,
-) -> Rc<StatementV> {
-    let condition: Statement = parse_statement(tokens, listener).into();
-    let if_: Statement = parse_statement(tokens, listener).into();
-    if let Token::Mark(12) = tokens.last().unwrap() {
-        tokens.pop();
-        let else_: Statement = parse_statement(tokens, listener).into();
-        Rc::new(StatementV::If(condition, if_, Some(else_)))
+) -> Statement {
+    let condition = parse_statement(tokens, index, listener);
+
+    let if_block = parse_statement(tokens, index, listener);
+    if let Token::Mark(12) = tokens[*index] {
+        *index += 1;
+        let else_block = parse_statement(tokens, index,listener);
+        Statement::If(Box::from(condition), Box::from(if_block), Some(Box::from(else_block)))
     } else {
-        Rc::new(StatementV::If(condition, if_, None))
+        Statement::If(Box::from(condition), Box::from(if_block), None)
     }
 }
 fn parse_expression(
-    tokens: &mut Vec<Token>,
+    tokens: &Vec<Token>,
+    index: &mut usize,
     min_priority: u8,
     listener: &RefCell<FlowListener>,
-) -> Rc<StatementV> {
-    let mut left_expr: Statement = parse_primary(tokens, listener).into();
+) -> Statement {
+    if tokens.len() <= *index {
+        return Statement::Nil;
+    }
+    let mut left_expr: Statement = parse_primary(tokens, index, listener);
     loop {
-        let op: Token = tokens.last().unwrap().clone();
+        let op: Token = tokens[*index];
         let priority = op.get_operation_priorety();
         if priority < min_priority || !op.is_operation() {
             break;
         }
-        tokens.pop().unwrap();
-        let right_expr: Statement = parse_expression(tokens, priority + 1, listener).into();
+        *index += 1;
+        let right_expr: Statement = parse_expression(tokens, index,priority + 1, listener);
         left_expr = match &op {
-            Token::Sign(_) => Rc::new(StatementV::OperationNumder(
+            Token::Sign(_) => Statement::OperationNumder(
                 op.token_to_action_type(),
-                left_expr,
-                right_expr,
-            ))
+                Box::from(left_expr),
+                Box::from(right_expr),
+            )
             .into(),
-            Token::Comparsion(_) => Rc::new(StatementV::Comparsion(
+            Token::Comparsion(_) => Statement::Comparsion(
                 op.token_to_comparsion_type(),
-                left_expr,
-                right_expr,
-            ))
+                Box::from(left_expr),
+                Box::from(right_expr),
+            )
             .into(),
-            Token::Mark(1 | 7 | 9) => Rc::new(StatementV::OperationBool(
+            Token::Mark(1 | 7 | 9) => Statement::OperationBool(
                 op.token_to_action_type(),
-                left_expr,
-                Some(right_expr),
-            ))
-            .into(),
+                Box::from(left_expr),
+                Some(Box::from(right_expr)),
+            ),
             _ => panic!("Invalid operation to operate"),
         };
     }
-    left_expr.value
+    left_expr
 }
-fn parse_primary(tokens: &mut Vec<Token>, listener: &RefCell<FlowListener>) -> Rc<StatementV> {
-    if tokens.is_empty() {
-        panic!("Invalid expression in primary");
+fn parse_primary<'a>(tokens: &Vec<Token>,index: &mut usize, listener: &RefCell<FlowListener>) -> Statement {
+    if tokens.len() <= *index {
+        return Statement::Nil;
     }
-    let tk: Token = tokens.pop().unwrap();
+    let tk: Token = tokens[*index];
+    *index += 1;
     match tk {
-        Token::Brackets { id, is_opened } => {
-            if is_opened {
-                match id {
-                    1 => {
-                        let expr: Rc<StatementV> = parse_statement(tokens, listener);
-                        if let Token::Brackets {
-                            id: 1,
-                            is_opened: false,
-                        } = tokens.pop().unwrap()
-                        {
-                        } else {
-                            println!("{:?}", tokens);
-                            panic!("Mismatched ) paren");
-                        }
-                        expr
-                    }
-                    2 => {
-                        let expr: Rc<StatementV> = parse_block(
-                            tokens,
-                            Token::Brackets {
-                                id: 2,
-                                is_opened: false,
-                            },
-                            listener,
-                        );
-                        Rc::new(StatementV::Block(
-                            get_statements_of_block(expr),
-                            BlockV::Storage,
-                        ))
-                    }
-                    3 => {
-                        let expr: Rc<StatementV> = parse_block(
-                            tokens,
-                            Token::Brackets {
-                                id: 3,
-                                is_opened: false,
-                            },
-                            listener,
-                        );
-                        Rc::new(StatementV::Block(
-                            get_statements_of_block(expr),
-                            BlockV::Evaluate,
-                        ))
-                    }
-                    4 => {
-                        parse_block(tokens, Token::Brackets { id: 4, is_opened: false }, listener)
-                    }    
-                    _ => panic!("unexpected brace id"),
-                }
-            } else {
-                panic!("closing paren found while no opening was: {:?}", tk)
-            }
-        }
+        Token::Brackets { id, is_opened } => parse_brackets(tokens, index, id, is_opened, listener),
         Token::Mark(1) | Token::Sign(2) => {
-            let expr: Statement = parse_expression(tokens, 5, listener).into();
-            Rc::new(StatementV::OperationBool(ActionV::Not, expr, None))
+            let expr: Statement = parse_expression(tokens, index, 5, listener);
+            Statement::OperationBool(ActionV::Not, Box::from(expr), None)
         }
-        Token::Number(val) => Rc::new(StatementV::Number(val)),
-        Token::Bool(val) => Rc::new(StatementV::Bool(val)),
-        Token::Name(name) => Rc::new(StatementV::Name(name)),
-        Token::EOF => {
-            tokens.insert(0, Token::EOF);
-            Rc::new(StatementV::Nil)
-        }
-        _ => panic!(
-            "Unexpected token:  {:?}; tokens: {:?}",
-            tk,
-            tokens.iter().rev().collect::<Vec<&Token>>()
-        ),
+        Token::Number(val) => Statement::Number(val),
+        Token::Bool(val) => Statement::Bool(val),
+        Token::Name(name) => Statement::Name(name),
+        v => {println!("unexpected token in primary expression: {:?}", v); Statement::Nil},
+    }
+}
+fn parse_brackets(
+    tokens: &Vec<Token>,
+    index: &mut usize,
+    id: u8,
+    is_opened: bool,
+    listener: &RefCell<FlowListener>,
+) -> Statement {
+    if is_opened {
+        let closing_brace = Token::Brackets { id, is_opened: false };
+        let block = parse_block(tokens, index, closing_brace, listener);
+        block
+    } else {
+        panic!("unexpected closing bracket");
     }
 }
