@@ -1,7 +1,13 @@
 use std::collections::HashMap;
-
+mod var;
 use crate::ir::{MatchPattern, IR};
-use crate::types::{ActionV, VarV};
+use crate::types::ActionV;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VarV {
+    Tuple(Vec<VarV>),
+    Num(isize),
+    Bool(bool),
+}
 
 pub fn execute(ir: Vec<IR>, heap: &mut HashMap<usize, VarV>) -> VarV {
     let mut stack: Vec<VarV> = Vec::new();

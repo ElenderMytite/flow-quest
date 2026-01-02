@@ -19,7 +19,7 @@ fn main() {
         println!("please provide a filename");
         return;
     }
-    let mut tokens: Vec<types::Token> = lexer::tokenize_code(
+    let mut tokens: Vec<lexer::Token> = lexer::tokenize_code(
         read_to_string(format!("code//{}.fq", filename)).unwrap_or("".to_string()),
         &vocabulary.keywords,
     );
@@ -29,7 +29,7 @@ fn main() {
     let mut ir: Vec<ir::IR> = vec![];
     ir::ast_to_ir(&tree, &mut ir);
     // println!("IR: {:#?}", ir.iter().enumerate().collect::<Vec<(usize, &ir::IR)>>());
-    let mut env: HashMap<usize,types::VarV> = HashMap::new();
+    let mut env: HashMap<usize,crate::vm::VarV> = HashMap::new();
     println!("output: ");
     vm::execute(ir.clone(), &mut env);
 }

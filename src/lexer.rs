@@ -1,7 +1,18 @@
 use std::collections::HashMap;
 
-use crate::types::Token;
-
+mod token;
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Token {
+    Brackets { id: u8, is_opened: bool },
+    Sign(u8),
+    Bool(bool),
+    Number(isize),
+    Name(usize),
+    Mark(u8),
+    Comparsion(u8),
+    Dot(bool),
+    EOF,
+}
 pub fn tokenize_code(eq: String, keywords: &HashMap<String,u8>) -> Vec<Token> {
     let chars: Vec<char> = eq.chars().collect();
     let mut index: usize = 0;
