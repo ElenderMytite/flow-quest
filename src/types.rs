@@ -2,7 +2,6 @@ use core::ops::{Add, Div, Mul, Not, Sub, BitOr, BitAnd};
 use std::cell::RefCell;
 use std::cmp::{Eq, Ord, PartialEq, PartialOrd};
 use std::ops::Rem;
-use crate::ir::IR;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     Block(Vec<Box<Statement>>),
@@ -42,17 +41,10 @@ pub enum ComparsionV {
 #[derive(Debug, Clone)]
 pub enum VarV {
     Tuple(Vec<VarV>),
-    Procedure(Vec<IR>),
     Num(isize),
     Bool(bool),
 }
 impl VarV {
-    pub fn get_code(&self) -> Vec<IR> {
-        match self {
-            VarV::Procedure(code) => code.clone(),
-            _ => panic!("Type mismatch: not a procedure"),
-        }
-    }
 }
 impl Eq for VarV {}
 impl PartialEq for VarV {
@@ -88,7 +80,6 @@ impl Not for VarV {
             VarV::Bool(b) => VarV::Bool(!b),
             VarV::Num(v) => VarV::Num(-v),
             VarV::Tuple(_) => todo!(),
-            VarV::Procedure(_) => todo!(),
         }
     }
 }
@@ -235,8 +226,7 @@ impl FlowListener {
                 match val {
                     VarV::Num(val) => println!("{}",val),
                     VarV::Bool(val) => println!("{}",val),
-                    VarV::Tuple(vec) => println!("{:?}",vec),
-                    VarV::Procedure(_) => println!("Procedure"),                 
+                    VarV::Tuple(vec) => println!("{:?}",vec),   
                 }
                 true
             }

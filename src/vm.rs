@@ -12,9 +12,6 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<usize, VarV>) -> Vec<VarV> {
             IR::Nil => (),
             IR::Num(n) => stack.push(VarV::Num(*n)),
             IR::Bool(b) => stack.push(VarV::Bool(*b)),
-            IR::Code(c) => {
-                stack.push(VarV::Procedure(c.clone()));
-            }
             IR::BinExpr(_) |
             IR::Or |
             IR::And |
@@ -41,12 +38,6 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<usize, VarV>) -> Vec<VarV> {
                     index = *jump_index;
                     continue;
                 }
-            }
-            IR::Exe(name) => {
-                stack.append(&mut execute(heap[name].get_code(), heap));
-            }
-            IR::Define(name, code) => {
-                heap.insert(name.clone(), VarV::Procedure(code.clone()));
             }
             IR::Efine(vec) => {
                 stack.append(&mut execute(vec.clone(), heap));

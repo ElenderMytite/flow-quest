@@ -8,12 +8,10 @@ pub enum MatchPattern {
     Val(Vec<IR>),
     Unused,
 }
-#[allow(unused_variables, dead_code)]
 #[derive(Debug, Clone)]
 pub enum IR {
     Num(isize),
     Bool(bool),
-    Code(Vec<IR>),
 
     Nil,
 
@@ -34,9 +32,6 @@ pub enum IR {
     Load(usize),
 
     Jump(usize),
-
-    Define(usize, Vec<IR>),
-    Exe(usize),
     Efine(Vec<IR>),
 
     Input(RefCell<FlowStreamer>),
@@ -85,7 +80,7 @@ pub fn ast_to_ir(ast_node: &Statement, ir: &mut Vec<IR>) {
                 ActionV::Not => IR::Not,
                 ActionV::And => IR::And,
                 ActionV::Or => IR::Or,
-                _ => todo!(),
+                _ => {println!("Invalid boolean operation in AST to IR conversion"); IR::Nil},
             });
         }
         
@@ -98,11 +93,11 @@ pub fn ast_to_ir(ast_node: &Statement, ir: &mut Vec<IR>) {
             ast_to_ir(&statement, ir);
             ir.push(IR::Case(
                 vec![MatchPattern::Val(vec![IR::Bool(false)])],
-                ir.len() + 2 + if statement2.is_some() { 1 } else { 0 },
+                ir.len() + 2 + if statement2.is_some() { 1 } else { 0 }, // jump over the "then" block and optional "else" block
             ));
             ast_to_ir(&statement1, ir);
             if let Some(statement2) = statement2 {
-                ir.push(IR::Jump(ir.len() + 2));
+                ir.push(IR::Jump(ir.len() + 2)); // jump over the "else" block
                 ast_to_ir(&statement2, ir);
             }
         }
