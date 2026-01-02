@@ -97,7 +97,7 @@ pub fn ast_to_ir(ast_node: &Statement, ir: &mut Vec<IR>) {
         Statement::If(statement, statement1, statement2) => {
             ast_to_ir(&statement, ir);
             ir.push(IR::Case(
-                vec![MatchPattern::Val(vec![IR::Bool(true)])],
+                vec![MatchPattern::Val(vec![IR::Bool(false)])],
                 ir.len() + 2 + if statement2.is_some() { 1 } else { 0 },
             ));
             ast_to_ir(&statement1, ir);

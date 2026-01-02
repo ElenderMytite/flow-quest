@@ -56,7 +56,7 @@ fn tokenize_number(chars: &Vec<char>, index: &mut usize) -> Token {
         return Token::Number(0);
     }
     loop {
-        if chars.len() > 0 {
+        if chars.len() > *index {
             if !chars[*index].is_numeric() {
                 break;
             }

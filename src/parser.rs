@@ -52,6 +52,7 @@ fn parse_statement(tokens: &Vec<Token>, index: &mut usize, listener: &RefCell<Fl
                 }
             }
             _ => {
+                *index -= 1;
                 parse_expression(tokens, index, 1, listener)
             }
         },
@@ -133,7 +134,7 @@ fn parse_primary<'a>(tokens: &Vec<Token>,index: &mut usize, listener: &RefCell<F
         Token::Number(val) => Statement::Number(val),
         Token::Bool(val) => Statement::Bool(val),
         Token::Name(name) => Statement::Name(name),
-        _ => Statement::Nil,
+        v => {println!("unexpected token in primary expression: {:?}", v); Statement::Nil},
     }
 }
 fn parse_brackets(

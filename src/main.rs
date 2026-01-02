@@ -14,17 +14,17 @@ use types::VarV;
 fn main() {
     let vocabulary: Vocabulary = read_json("vocabulary.json".to_string());
 
-    let name: &str = "fib";
+    let name: &str = "order";
     let mut tokens: Vec<types::Token> = lexer::tokenize_code(
         read_to_string(format!("code//{}.fq", name)).unwrap_or("".to_string()),
         &vocabulary.keywords,
     );
-    println!("parsing");
     let tree: types::Statement =
         parse_program(&mut tokens, &RefCell::new(FlowListener::Console));
     inout::print_tree(tree.clone(), 0);
     let mut ir: Vec<ir::IR> = vec![];
     ir::ast_to_ir(&tree, &mut ir);
+    println!("IR: {:#?}", ir.iter().enumerate().collect::<Vec<(usize, &ir::IR)>>());
     let mut env: HashMap<usize,VarV> = HashMap::new();
     println!("output: ");
     vm::execute(ir.clone(), &mut env);

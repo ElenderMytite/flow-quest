@@ -57,12 +57,12 @@ pub fn print_tree(node: Statement, depth: usize) {
     match node {
         Statement::Number(val) => println!("{}Number: {}", indent, val),
         Statement::OperationNumder(op, left, right) => {
-            println!("{}Op int: {:?}", indent, op);
+            println!("{}{:?}", indent, op);
             print_tree(*left, depth + 1);
             print_tree(*right, depth + 1);
         }
         Statement::OperationBool(op, left, right) => {
-            println!("{}Op bool: {:?}", indent, op);
+            println!("{}{:?}", indent, op);
             print_tree(*left, depth + 1);
             match right {
                 Some(v) => print_tree(*v, depth + 1),
@@ -77,21 +77,20 @@ pub fn print_tree(node: Statement, depth: usize) {
             print_tree(*condition, depth + 1);
             println!("{}Do:", indent);
             print_tree(*if_, depth + 1);
-            println!("{}else: ", indent);
+            println!("{}Else do: ", indent);
             match else_ {
                 Some(v) => print_tree(*v, depth + 1),
                 None => (),
             }
         }
         Statement::Comparsion(comparsion_type, left, right) => {
-            println!("{}Comparsion: {:?}", indent, comparsion_type);
+            println!("{}{:?}", indent, comparsion_type);
             print_tree(*left, depth + 1);
             print_tree(*right, depth + 1);
         }
         Statement::Block(vec) => {
-            println!("{}Block:", indent);
             for stmt in vec {
-                print_tree(*stmt, depth + 1);
+                print_tree(*stmt, depth);
             }
         }
         Statement::Out { expr, to } => {

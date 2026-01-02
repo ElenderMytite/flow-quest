@@ -51,15 +51,15 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<usize, VarV>) -> Vec<VarV> {
             IR::Efine(vec) => {
                 stack.append(&mut execute(vec.clone(), heap));
             }
-            IR::Case(pattern, gt) => {
-                if pattern.len() > stack.len() || gt > &ir.len() {
+            IR::Case(patterns, gt) => {
+                if patterns.len() > stack.len() || gt > &ir.len() {
                     panic!(
                         "Pattern length is longer than stack length or goto index is out of range"
                     );
                 }
                 let mut is_matching = true;
-                for pat in pattern {
-                    match pat {
+                for pattern in patterns {
+                    match pattern {
                         MatchPattern::Var(name) => {
                             heap.insert(*name, stack.pop().unwrap());
                         }
@@ -76,17 +76,17 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<usize, VarV>) -> Vec<VarV> {
                         }
                     }
                 }
-                if !is_matching {
+                if is_matching {
                     index = *gt;
                     continue;
                 }
             }
-            IR::Input(ref_cell) => {
-                stack.push(ref_cell.borrow().send());
+            IR::Input(streamer) => {
+                stack.push(streamer.borrow().send());
             }
-            IR::Output(ref_cell) => {
+            IR::Output(listener) => {
                 let top = stack.pop().unwrap();
-                assert!(ref_cell.borrow().get(top.clone()));
+                assert!(listener.borrow().get(top));
             }
         }
         index += 1;
