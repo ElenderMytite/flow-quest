@@ -1,9 +1,15 @@
 use std::collections::HashMap;
-
+mod var;
 use crate::ir::{MatchPattern, IR};
-use crate::types::{ActionV, VarV};
+use crate::types::ActionV;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VarV {
+    Tuple(Vec<VarV>),
+    Num(isize),
+    Bool(bool),
+}
 
-pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarV>) -> Vec<VarV> {
+pub fn execute(ir: Vec<IR>, heap: &mut HashMap<usize, VarV>) -> VarV {
     let mut stack: Vec<VarV> = Vec::new();
     let mut index = 0;
     while ir.len() > index {
@@ -12,9 +18,6 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarV>) -> Vec<VarV> {
             IR::Nil => (),
             IR::Num(n) => stack.push(VarV::Num(*n)),
             IR::Bool(b) => stack.push(VarV::Bool(*b)),
-            IR::Code(c) => {
-                stack.push(VarV::Procedure(c.clone()));
-            }
             IR::BinExpr(_) |
             IR::Or |
             IR::And |
@@ -29,7 +32,7 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarV>) -> Vec<VarV> {
             }
             IR::Store(name) => {
                 let value = stack.pop().unwrap();
-                heap.insert(name.clone(), value);
+                heap.insert(*name, value);
             }
             IR::Load(name) => {
                 stack.push(heap[name].clone());
@@ -42,30 +45,24 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarV>) -> Vec<VarV> {
                     continue;
                 }
             }
-            IR::Exe(name) => {
-                stack.append(&mut execute(heap[name].get_code(), heap));
-            }
-            IR::Define(name, code) => {
-                heap.insert(name.clone(), VarV::Procedure(code.clone()));
-            }
             IR::Efine(vec) => {
-                stack.append(&mut execute(vec.clone(), heap));
+                stack.append(&mut unpack(execute(vec.clone(), heap)));
             }
-            IR::Case(pattern, gt) => {
-                if pattern.len() > stack.len() || gt > &ir.len() {
+            IR::Case(patterns, gt) => {
+                if patterns.len() > stack.len() || gt > &ir.len() {
                     panic!(
                         "Pattern length is longer than stack length or goto index is out of range"
                     );
                 }
                 let mut is_matching = true;
-                for pat in pattern {
-                    match pat {
+                for pattern in patterns {
+                    match pattern {
                         MatchPattern::Var(name) => {
-                            heap.insert(name.clone(), stack.pop().unwrap());
+                            heap.insert(*name, stack.pop().unwrap());
                         }
                         MatchPattern::Val(val) => {
                             if stack.pop().unwrap()
-                                != return_vector_to_tuple(execute(val.clone(), heap))
+                                != pack(unpack(execute(val.clone(), heap)))
                             {
                                 is_matching = false;
                                 break;
@@ -76,31 +73,36 @@ pub fn execute(ir: Vec<IR>, heap: &mut HashMap<String, VarV>) -> Vec<VarV> {
                         }
                     }
                 }
-                if !is_matching {
+                if is_matching {
                     index = *gt;
                     continue;
                 }
             }
-            IR::Input(ref_cell) => {
-                stack.push(ref_cell.borrow().send());
+            IR::Input(streamer) => {
+                stack.push(streamer.borrow().send());
             }
-            IR::Output(ref_cell) => {
+            IR::Output(listener) => {
                 let top = stack.pop().unwrap();
-                assert!(ref_cell.borrow().get(top.clone()));
+                assert!(listener.borrow().get(top));
             }
         }
         index += 1;
     }
-    stack
+    pack(stack)
 }
-fn return_vector_to_tuple(v: Vec<VarV>) -> VarV {
+fn pack(v: Vec<VarV>) -> VarV {
     match v.len() {
         0 => VarV::Tuple(Vec::new()),
         1 => v[0].clone(),
         _ => VarV::Tuple(v),
     }
 }
-
+fn unpack(v: VarV) -> Vec<VarV> {
+    match v {
+        VarV::Tuple(vec) => vec,
+        _ => vec![v],
+    }
+}
 fn do_operation(stack: &mut Vec<VarV>, operation: IR)
 {
     let a = stack.pop().unwrap();

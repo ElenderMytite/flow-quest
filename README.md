@@ -2,7 +2,7 @@
 
 ## Compiler or Interpreter
 
-Flow quest is a ***compiler***.
+Flow quest is an ***interpreter***.
 
 ## Typing
 
@@ -26,23 +26,10 @@ Each **neuron** can have any quantity of streamers and listeners (routs). Each r
 ### Object
 ###### Can be:
 * number
-* bool(beta)
-* string(coming soon)
+* bool
+* string
 * tuple
-  * Struct
-  * Coming soon
-  * transformer takes one object so if you want to pass multiple arguments to it - pass tuple 
-* condition
-  * enum
-  * coming soon
-* slice
-   * indexed(list)
-   * ordered(deque)
-   * coming soon
-* hashmap
-  * dictionary
-  * set
-  * also coming soon
+* function
 
 ### Storage
 Stores one object
