@@ -31,19 +31,6 @@ impl From<VocabularyBuilder> for Vocabulary {
         }
     }
 }
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ModulePiece {
-    TransFormer,
-    Streamer,
-    Listener,
-    Condition,
-}
-pub fn read_file_contents(filename: &str) -> io::Result<String> {
-    let mut file = File::open(String::from("code/") + filename + ".fq")?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    Ok(contents)
-}
 pub fn read_json(path: String) -> Vocabulary {
     let file = File::open(path).expect("cannot open file");
     let builder: VocabularyBuilder = serde_json::from_reader(file).expect("cannot read json");
