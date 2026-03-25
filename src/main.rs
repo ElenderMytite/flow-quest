@@ -3,7 +3,6 @@ mod ir;
 mod lexer;
 mod parser;
 mod vm;
-mod tests;
 mod types;
 use crate::types::VarV;
 use inout::{ask_to_do_smth, get_code_to_run, read_json, Vocabulary};
